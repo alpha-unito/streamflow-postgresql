@@ -44,9 +44,9 @@ jobs:
         with:
           python-version: "3.10"
       - name: "Get local version"
-        run: echo "PLUGIN_VERSION=$(cat streamflow/version.py | grep -oP '(?<=VERSION = \")(.*)(?=\")')" >> $GITHUB_ENV
+        run: echo "PLUGIN_VERSION=$(cat postgresql/version.py | grep -oP '(?<=VERSION = \")(.*)(?=\")')" >> $GITHUB_ENV
       - name: "Get PyPI version"
-        run: echo "PYPI_VERSION=$(pip index versions --pre streamflow | grep streamflow | sed 's/.*(\(.*\))/\1/')" >> $GITHUB_ENV
+        run: echo "PYPI_VERSION=$(pip index versions --pre streamflow-postgresql | grep streamflow-postgresql | sed 's/.*(\(.*\))/\1/')" >> $GITHUB_ENV
       - name: "Build Python packages"
         if: ${{ env.PLUGIN_VERSION != env.PYPI_VERSION }}
         run: |
