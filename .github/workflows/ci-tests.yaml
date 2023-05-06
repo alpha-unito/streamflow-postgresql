@@ -1,0 +1,116 @@
+name: "CI Tests"
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
+concurrency:
+  group: build-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  code-ql-check:
+    name: "CodeQL check"
+    runs-on: ubuntu-22.04
+    permissions:
+      security-events: write
+    steps:
+      - uses: actions/checkout@v3
+      - uses: github/codeql-action/init@v2
+        with:
+          config-file: .github/codeql/config.yml
+          languages: python
+      - uses: github/codeql-action/analyze@v2
+  static-checks:
+    name: "Static checks"
+    runs-on: ubuntu-22.04
+    strategy:
+      matrix:
+        step: [ "bandit", "lint" ]
+    env:
+      TOXENV: ${{ matrix.step }}
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: |
+            requirements.txt
+            test-requirements.txt
+            tox.ini
+      - name: "Install Python Dependencies and plugin"
+        run: |
+          python -m pip install tox --user
+          python -m pip install . --user
+      - name: "Run static analysis via Tox"
+        run: tox
+  unit-tests:
+    name: "Unit tests"
+    strategy:
+      matrix:
+        on: [ "ubuntu-22.04"]
+        python: [ "3.8", "3.9", "3.10", "3.11" ]
+        include:
+          - on: "macos-12"
+            python: "3.11"
+    runs-on: ${{ matrix.on }}
+    env:
+      POSTGRES_DB: streamflow
+      POSTGRES_PASSWORD: streamflow
+      POSTGRES_USER: streamflow
+      POSTGRES_HOST: 127.0.0.1
+      TOXENV: ${{ format('py{0}-unit', matrix.python) }}
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python }}
+          cache: pip
+          cache-dependency-path: |
+            requirements.txt
+            tox.ini
+      - uses: actions/setup-node@v3
+        with:
+          node-version: "15"
+      - name: "Install Docker (MacOs X)"
+        uses: douglascamata/setup-docker-macos-action@v1-alpha
+        if: ${{ startsWith(matrix.on, 'macos-') }}
+      - uses: docker/setup-qemu-action@v2
+      - name: "Start PostgreSQL Docker container"
+        run: |
+          docker run \
+            --rm \
+            --detach \
+            --env POSTGRES_DB=${{ env.POSTGRES_DB }} \
+            --env POSTGRES_PASSWORD=${{ env.POSTGRES_DB }} \
+            --env POSTGRES_USER=${{ env.POSTGRES_DB }} \
+            --publish 5432:5432 \
+            postgres:15.2-alpine
+      - name: "Install Python Dependencies and plugin"
+        run: |
+          python -m pip install tox --user
+          python -m pip install . --user
+      - name: "Run tests via Tox"
+        run: python -m tox
+      - name: "Upload coverage report for unit tests"
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{ format('py{0}-unit-tests', matrix.python) }}
+          path: ./coverage.xml
+          retention-days: 1
+          if-no-files-found: error
+  upload-to-codecov:
+    name: "Codecov report upload"
+    needs: [ "unit-tests" ]
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v3
+      - name: "Download artifacts"
+        uses: actions/download-artifact@v3
+      - name: "Upload coverage to Codecov"
+        uses: codecov/codecov-action@v3
+        with:
+          fail_ci_if_error: true
+          token: ${{ secrets.CODECOV_TOKEN }}

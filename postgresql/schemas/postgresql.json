@@ -1,0 +1,40 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "postgresql.json",
+  "type": "object",
+  "properties": {
+    "dbname": {
+      "type": "string",
+      "description": "The name of the database to use"
+    },
+    "hostname": {
+      "type": "string",
+      "description": "The database hostname or IP address"
+    },
+    "maxConnections": {
+      "type": "integer",
+      "description": "Maximum size of the PostgreSQL connection pool. 0 means unlimited pool size",
+      "default": 10
+    },
+    "password": {
+      "type": "string",
+      "description": "Password to use when connecting to the database"
+    },
+    "timeout": {
+      "type": "integer",
+      "description": "The timeout (in seconds) for connection operations",
+      "default": 20
+    },
+    "username": {
+      "type": "string",
+      "description": "Username to use when connecting to the database"
+    }
+  },
+  "required": [
+    "dbname",
+    "hostname",
+    "username",
+    "password"
+  ],
+  "additionalProperties": false
+}
