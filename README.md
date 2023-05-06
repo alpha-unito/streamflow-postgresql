@@ -2,10 +2,10 @@
 
 ## Installation
 
-Simply install the package directory from [this repository](https://github.com/alpha-unito/streamflow-postgresql) using [pip](https://pip.pypa.io/en/stable/). StreamFlow will automatically recognise it as a plugin and load it at each workflow execution.
+Simply install the package directory from [PyPI](https://pypi.org/project/streamflow-postgresql/) using [pip](https://pip.pypa.io/en/stable/). StreamFlow will automatically recognise it as a plugin and load it at each workflow execution.
 
 ```bash
-pip install streamflow-postgresql@git+https://github.com/alpha-unito/streamflow-postgresql
+pip install streamflow-postgresql
 ```
 
 If everything worked correctly, whenever a workflow execution start the following message should be printed in the log:
