@@ -20,7 +20,7 @@ This plugin registers a new `Database` component, which extends the StreamFlow `
 
 ```yaml
 database:
-  type: postgresql
+  type: unito.postgresql
   config:
     dbname: <dbname>               # The name of the database to use
     hostname: <hostname>           # The database hostname or IP address
