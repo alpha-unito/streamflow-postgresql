@@ -30,7 +30,7 @@ async def context() -> StreamFlowContext:
     _context = build_context(
         {
             "database": {
-                "type": "postgresql",
+                "type": "unito.postgresql",
                 "config": {
                     "dbname": os.environ.get("POSTGRES_DB", "streamflow"),
                     "username": os.environ.get("POSTGRES_USER", "streamflow"),

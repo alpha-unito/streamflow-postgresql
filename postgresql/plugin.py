@@ -5,4 +5,4 @@ from postgresql.database import PostgreSQLDatabase
 
 class PostgreSQLStreamFlowPlugin(StreamFlowPlugin):
     def register(self) -> None:
-        self.register_database("postgresql", PostgreSQLDatabase)
+        self.register_database("unito.postgresql", PostgreSQLDatabase)

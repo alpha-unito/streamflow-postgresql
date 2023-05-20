@@ -34,7 +34,7 @@ Package = "https://pypi.org/project/streamflow-postgresql"
 Repository = "https://github.com/alpha-unito/streamflow-postgresql"
 
 [project.entry-points]
-"unito.streamflow.plugin" = {postgresql = "postgresql.plugin:PostgreSQLStreamFlowPlugin"}
+"unito.streamflow.plugin" = {"unito.postgresql" = "postgresql.plugin:PostgreSQLStreamFlowPlugin"}
 
 
 [tool.setuptools]
