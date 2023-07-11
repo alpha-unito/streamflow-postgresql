@@ -283,6 +283,34 @@ class PostgreSQLDatabase(CachedDatabase):
                     )
                     return await cursor.fetchall()
 
+    async def get_dependees(
+        self, token_id: int
+    ) -> MutableSequence[MutableMapping[str, Any]]:
+        async with self.pool as pool:
+            async with pool.acquire() as db:
+                async with db.cursor(
+                    cursor_factory=psycopg2.extras.RealDictCursor
+                ) as cursor:
+                    await cursor.execute(
+                        "SELECT * FROM provenance WHERE depender = %(id)s",
+                        {"id": token_id},
+                    )
+                    return await cursor.fetchall()
+
+    async def get_dependers(
+        self, token_id: int
+    ) -> MutableSequence[MutableMapping[str, Any]]:
+        async with self.pool as pool:
+            async with pool.acquire() as db:
+                async with db.cursor(
+                    cursor_factory=psycopg2.extras.RealDictCursor
+                ) as cursor:
+                    await cursor.execute(
+                        "SELECT * FROM provenance WHERE dependee = %(id)s",
+                        {"id": token_id},
+                    )
+                    return await cursor.fetchall()
+
     async def get_deployment(self, deplyoment_id: int) -> MutableMapping[str, Any]:
         async with self.pool as pool:
             async with pool.acquire() as db:
