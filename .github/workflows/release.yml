@@ -19,7 +19,7 @@ jobs:
       - name: "Get version"
         run: echo "PLUGIN_VERSION=$(cat postgresql/version.py | grep -oP '(?<=VERSION = \")(.*)(?=\")')" >> $GITHUB_ENV
       - name: "Check tag existence"
-        uses: mukunku/tag-exists-action@v1.2.0
+        uses: mukunku/tag-exists-action@v1.3.0
         id: check-tag
         with:
           tag: ${{ env.PLUGIN_VERSION }}
