@@ -53,7 +53,7 @@ jobs:
         on: [ "ubuntu-22.04"]
         python: [ "3.8", "3.9", "3.10", "3.11" ]
         include:
-          - on: "macos-12"
+          - on: "macos-13"
             python: "3.11"
     runs-on: ${{ matrix.on }}
     env:
@@ -75,7 +75,7 @@ jobs:
         with:
           node-version: "15"
       - name: "Install Docker (MacOs X)"
-        uses: douglascamata/setup-docker-macos-action@v1-alpha
+        uses: douglascamata/setup-docker-macos-action@v1-alpha.6
         if: ${{ startsWith(matrix.on, 'macos-') }}
       - uses: docker/setup-qemu-action@v2
       - name: "Start PostgreSQL Docker container"
@@ -88,6 +88,9 @@ jobs:
             --env POSTGRES_USER=${{ env.POSTGRES_DB }} \
             --publish 5432:5432 \
             postgres:15.2-alpine
+      - name: "Install Postgresql client"
+        run: brew install postgresql
+        if: ${{ startsWith(matrix.on, 'macos-') }}
       - name: "Install Python Dependencies and plugin"
         run: |
           python -m pip install tox --user
