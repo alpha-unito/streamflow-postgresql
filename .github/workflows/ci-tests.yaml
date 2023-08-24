@@ -75,7 +75,7 @@ jobs:
         with:
           node-version: "15"
       - name: "Install Docker (MacOs X)"
-        uses: douglascamata/setup-docker-macos-action@v1-alpha.6
+        uses: douglascamata/setup-docker-macos-action@v1-alpha.9
         if: ${{ startsWith(matrix.on, 'macos-') }}
       - uses: docker/setup-qemu-action@v2
       - name: "Start PostgreSQL Docker container"
