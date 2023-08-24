@@ -11,13 +11,13 @@ coverage-report: testcov
 	coverage report
 
 flake8:
-	flake8 postgresql tests
+	flake8 streamflow_postgresql tests
 
 format:
-	black postgresql tests
+	black streamflow_postgresql tests
 
 format-check:
-	black --diff --check postgresql tests
+	black --diff --check streamflow_postgresql tests
 
 pyupgrade:
 	pyupgrade --py3-only --py38-plus $(shell git ls-files | grep .py)

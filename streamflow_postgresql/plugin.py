@@ -1,6 +1,6 @@
 from streamflow.ext.plugin import StreamFlowPlugin
 
-from postgresql.database import PostgreSQLDatabase
+from streamflow_postgresql.database import PostgreSQLDatabase
 
 
 class PostgreSQLStreamFlowPlugin(StreamFlowPlugin):
