@@ -77,6 +77,8 @@ jobs:
       - name: "Install Docker (MacOs X)"
         uses: douglascamata/setup-docker-macos-action@v1-alpha.9
         if: ${{ startsWith(matrix.on, 'macos-') }}
+        env:
+          HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK: 1
       - uses: docker/setup-qemu-action@v2
       - name: "Start PostgreSQL Docker container"
         run: |
