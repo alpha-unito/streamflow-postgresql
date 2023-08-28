@@ -1,6 +1,6 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "postgresql.json",
+  "$schema": "https://json-schema.org/draft/2019-09/schema",
+  "$id": "https://streamflow.di.unito.it/schemas/plugins/postgresql/postgresql.json",
   "type": "object",
   "properties": {
     "dbname": {
