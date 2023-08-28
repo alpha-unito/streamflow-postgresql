@@ -36,7 +36,6 @@ Repository = "https://github.com/alpha-unito/streamflow-postgresql"
 [project.entry-points]
 "unito.streamflow.plugin" = {"unito.postgresql" = "streamflow_postgresql.plugin:PostgreSQLStreamFlowPlugin"}
 
-
 [tool.setuptools]
 packages = [
     "streamflow_postgresql"
