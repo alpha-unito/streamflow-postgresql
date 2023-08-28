@@ -4,16 +4,15 @@ import json
 import os
 from typing import Any, MutableMapping, MutableSequence
 
-import aiopg
+import asyncpg
 import pkg_resources
-import psycopg2.extras
 from streamflow.core import utils
 from streamflow.core.context import StreamFlowContext
 from streamflow.core.deployment import Target
 from streamflow.core.persistence import DependencyType
 from streamflow.core.utils import get_date_from_ns
 from streamflow.core.workflow import Port, Status, Step, Token
-from streamflow.persistence.sqlite import CachedDatabase
+from streamflow.persistence.base import CachedDatabase
 
 
 class PostgreSQLConnectionPool:
@@ -32,25 +31,25 @@ class PostgreSQLConnectionPool:
         self.password: str = password
         self.timeout: int = timeout
         self.maxsize: int = maxsize
-        self._pool: aiopg.Pool | None = None
+        self._pool: asyncpg.Pool | None = None
 
     async def __aenter__(self):
         if not self._pool:
-            self._pool = await aiopg.create_pool(
+            self._pool = await asyncpg.create_pool(
                 database=self.dbname,
                 user=self.username,
                 password=self.password,
                 host=self.hostname,
                 timeout=self.timeout,
-                maxsize=self.maxsize,
+                max_size=self.maxsize,
             )
             schema_path = pkg_resources.resource_filename(
                 __name__, os.path.join("schemas", "postgresql.sql")
             )
             with open(schema_path) as f:
                 async with self._pool.acquire() as conn:
-                    async with conn.cursor() as cursor:
-                        await cursor.execute(f.read())
+                    async with conn.transaction():
+                        await conn.execute(f.read())
         return self._pool
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
@@ -58,8 +57,7 @@ class PostgreSQLConnectionPool:
 
     async def close(self):
         if self._pool:
-            self._pool.close()
-            await self._pool.wait_closed()
+            await self._pool.close()
             self._pool = None
 
 
@@ -95,27 +93,31 @@ class PostgreSQLDatabase(CachedDatabase):
 
     async def add_command(self, step_id: int, tag: str, cmd: str) -> int:
         async with self.pool as pool:
-            async with pool.acquire() as db:
-                async with db.cursor() as cursor:
-                    await cursor.execute(
+            async with pool.acquire() as conn:
+                async with conn.transaction():
+                    return await conn.fetchval(
                         "INSERT INTO command(step, tag, cmd) "
-                        "VALUES(%(step)s, %(tag)s, %(cmd)s) "
+                        "VALUES($1, $2, $3) "
                         "RETURNING id",
-                        {"step": step_id, "tag": tag, "cmd": cmd},
+                        step_id,
+                        tag,
+                        cmd.encode("utf-8"),
                     )
-                    return (await cursor.fetchone())[0]
 
     async def add_dependency(
         self, step: int, port: int, type: DependencyType, name: str
     ) -> None:
         async with self.pool as pool:
-            async with pool.acquire() as db:
-                async with db.cursor() as cursor:
-                    await cursor.execute(
+            async with pool.acquire() as conn:
+                async with conn.transaction():
+                    await conn.execute(
                         "INSERT INTO dependency(step, port, type, name) "
-                        "VALUES(%(step)s, %(port)s, %(type)s, %(name)s) "
+                        "VALUES($1, $2, $3, $4) "
                         "ON CONFLICT DO NOTHING",
-                        {"step": step, "port": port, "type": type.value, "name": name},
+                        step,
+                        port,
+                        type.value,
+                        name,
                     )
 
     async def add_deployment(
@@ -128,74 +130,63 @@ class PostgreSQLDatabase(CachedDatabase):
         workdir: str | None,
     ) -> int:
         async with self.pool as pool:
-            async with pool.acquire() as db:
-                async with db.cursor() as cursor:
-                    await cursor.execute(
+            async with pool.acquire() as conn:
+                async with conn.transaction():
+                    return await conn.fetchval(
                         "INSERT INTO deployment(name, type, config, external, lazy, workdir) "
-                        "VALUES (%(name)s, %(type)s, %(config)s, %(external)s, %(lazy)s, %(workdir)s) "
+                        "VALUES ($1, $2, $3, $4, $5, $6) "
                         "RETURNING id",
-                        {
-                            "name": name,
-                            "type": type,
-                            "config": config,
-                            "external": external,
-                            "lazy": lazy,
-                            "workdir": workdir,
-                        },
+                        name,
+                        type,
+                        config,
+                        external,
+                        lazy,
+                        workdir,
                     )
-                    return (await cursor.fetchone())[0]
 
     async def add_port(
         self, name: str, workflow_id: int, type: type[Port], params: str
     ) -> int:
         async with self.pool as pool:
-            async with pool.acquire() as db:
-                async with db.cursor() as cursor:
-                    await cursor.execute(
+            async with pool.acquire() as conn:
+                async with conn.transaction():
+                    return await conn.fetchval(
                         "INSERT INTO port(name, workflow, type, params) "
-                        "VALUES(%(name)s, %(workflow)s, %(type)s, %(params)s) "
+                        "VALUES($1, $2, $3, $4) "
                         "RETURNING id",
-                        {
-                            "name": name,
-                            "workflow": workflow_id,
-                            "type": utils.get_class_fullname(type),
-                            "params": json.dumps(params),
-                        },
+                        name,
+                        workflow_id,
+                        utils.get_class_fullname(type),
+                        json.dumps(params),
                     )
-                    return (await cursor.fetchone())[0]
 
     async def add_provenance(self, inputs: MutableSequence[int], token: int):
-        provenance = [{"dependee": i, "depender": token} for i in inputs]
         async with self.pool as pool:
-            async with pool.acquire() as db:
-                async with db.cursor() as cursor:
-                    for prov in provenance:
-                        await cursor.execute(
-                            "INSERT INTO provenance(dependee, depender) "
-                            "VALUES(%(dependee)s, %(depender)s) "
-                            "ON CONFLICT DO NOTHING",
-                            prov,
-                        )
+            async with pool.acquire() as conn:
+                async with conn.transaction():
+                    await conn.executemany(
+                        "INSERT INTO provenance(dependee, depender) "
+                        "VALUES($1, $2) "
+                        "ON CONFLICT DO NOTHING",
+                        [(i, token) for i in inputs],
+                    )
 
     async def add_step(
         self, name: str, workflow_id: int, status: int, type: type[Step], params: str
     ) -> int:
         async with self.pool as pool:
-            async with pool.acquire() as db:
-                async with db.cursor() as cursor:
-                    await cursor.execute(
+            async with pool.acquire() as conn:
+                async with conn.transaction():
+                    return await conn.fetchval(
                         "INSERT INTO step(name, workflow, status, type, params) "
-                        "VALUES(%(name)s, %(workflow)s, %(status)s, %(type)s, %(params)s) "
+                        "VALUES($1, $2, $3, $4, $5) "
                         "RETURNING id",
-                        {
-                            "name": name,
-                            "workflow": workflow_id,
-                            "status": status,
-                            "type": utils.get_class_fullname(type),
-                            "params": json.dumps(params),
-                        },
+                        name,
+                        workflow_id,
+                        status,
+                        utils.get_class_fullname(type),
+                        json.dumps(params),
                     )
-                    return (await cursor.fetchone())[0]
 
     async def add_target(
         self,
@@ -207,196 +198,164 @@ class PostgreSQLDatabase(CachedDatabase):
         workdir: str | None = None,
     ) -> int:
         async with self.pool as pool:
-            async with pool.acquire() as db:
-                async with db.cursor() as cursor:
-                    await cursor.execute(
+            async with pool.acquire() as conn:
+                async with conn.transaction():
+                    return await conn.fetchval(
                         "INSERT INTO target(params, type, deployment, locations, service, workdir) "
-                        "VALUES (%(params)s, %(type)s, %(deployment)s, %(locations)s, %(service)s, %(workdir)s) "
+                        "VALUES ($1, $2, $3, $4, $5, $6) "
                         "RETURNING id",
-                        {
-                            "params": json.dumps(params),
-                            "type": utils.get_class_fullname(type),
-                            "deployment": deployment,
-                            "locations": locations,
-                            "service": service,
-                            "workdir": workdir,
-                        },
+                        json.dumps(params),
+                        utils.get_class_fullname(type),
+                        deployment,
+                        locations,
+                        service,
+                        workdir,
                     )
-                    return (await cursor.fetchone())[0]
 
     async def add_token(
         self, tag: str, type: type[Token], value: Any, port: int | None = None
     ) -> int:
         async with self.pool as pool:
-            async with pool.acquire() as db:
-                async with db.cursor() as cursor:
-                    await cursor.execute(
+            async with pool.acquire() as conn:
+                async with conn.transaction():
+                    return await conn.fetchval(
                         "INSERT INTO token(port, type, tag, value) "
-                        "VALUES(%(port)s, %(type)s, %(tag)s, %(value)s) "
+                        "VALUES($1, $2, $3, $4) "
                         "RETURNING id",
-                        {
-                            "port": port,
-                            "type": utils.get_class_fullname(type),
-                            "tag": tag,
-                            "value": value,
-                        },
+                        port,
+                        utils.get_class_fullname(type),
+                        tag,
+                        bytearray(value, "utf-8"),
                     )
-                    return (await cursor.fetchone())[0]
 
     async def add_workflow(self, name: str, params: str, status: int, type: str) -> int:
         async with self.pool as pool:
-            async with pool.acquire() as db:
-                async with db.cursor() as cursor:
-                    await cursor.execute(
+            async with pool.acquire() as conn:
+                async with conn.transaction():
+                    return await conn.fetchval(
                         "INSERT INTO workflow(name, params, status, type) "
-                        "VALUES(%(name)s, %(params)s, %(status)s, %(type)s) "
+                        "VALUES($1, $2, $3, $4) "
                         "RETURNING id",
-                        {
-                            "name": name,
-                            "params": json.dumps(params),
-                            "status": status,
-                            "type": type,
-                        },
+                        name,
+                        json.dumps(params),
+                        status,
+                        type,
                     )
-                    return (await cursor.fetchone())[0]
 
     async def get_command(self, command_id: int) -> MutableMapping[str, Any]:
         async with self.pool as pool:
-            async with pool.acquire() as db:
-                async with db.cursor(
-                    cursor_factory=psycopg2.extras.RealDictCursor
-                ) as cursor:
-                    await cursor.execute(
-                        "SELECT * FROM command WHERE id = %(id)s", {"id": command_id}
-                    )
-                    return await cursor.fetchone()
+            async with pool.acquire() as conn:
+                row = await conn.fetchrow(
+                    "SELECT * FROM command WHERE id = $1", command_id
+                )
+                return {
+                    k: bytearray(v) if isinstance(v, memoryview) else v
+                    for k, v in row.items()
+                }
 
     async def get_commands_by_step(
         self, step_id: int
     ) -> MutableSequence[MutableMapping[str, Any]]:
         async with self.pool as pool:
-            async with pool.acquire() as db:
-                async with db.cursor(
-                    cursor_factory=psycopg2.extras.RealDictCursor
-                ) as cursor:
-                    await cursor.execute(
-                        "SELECT * FROM command WHERE step = %(id)s", {"id": step_id}
-                    )
-                    return await cursor.fetchall()
+            async with pool.acquire() as conn:
+                rows = await conn.fetch(
+                    "SELECT * FROM command WHERE step = $1", step_id
+                )
+                return [
+                    {
+                        k: bytearray(v) if isinstance(v, memoryview) else v
+                        for k, v in row.items()
+                    }
+                    for row in rows
+                ]
 
     async def get_dependees(
         self, token_id: int
     ) -> MutableSequence[MutableMapping[str, Any]]:
         async with self.pool as pool:
-            async with pool.acquire() as db:
-                async with db.cursor(
-                    cursor_factory=psycopg2.extras.RealDictCursor
-                ) as cursor:
-                    await cursor.execute(
-                        "SELECT * FROM provenance WHERE depender = %(id)s",
-                        {"id": token_id},
-                    )
-                    return await cursor.fetchall()
+            async with pool.acquire() as conn:
+                return await conn.fetch(
+                    "SELECT * FROM provenance WHERE depender = $1",
+                    token_id,
+                )
 
     async def get_dependers(
         self, token_id: int
     ) -> MutableSequence[MutableMapping[str, Any]]:
         async with self.pool as pool:
-            async with pool.acquire() as db:
-                async with db.cursor(
-                    cursor_factory=psycopg2.extras.RealDictCursor
-                ) as cursor:
-                    await cursor.execute(
-                        "SELECT * FROM provenance WHERE dependee = %(id)s",
-                        {"id": token_id},
-                    )
-                    return await cursor.fetchall()
+            async with pool.acquire() as conn:
+                return await conn.fetch(
+                    "SELECT * FROM provenance WHERE dependee = $1",
+                    token_id,
+                )
 
     async def get_deployment(self, deplyoment_id: int) -> MutableMapping[str, Any]:
         async with self.pool as pool:
-            async with pool.acquire() as db:
-                async with db.cursor(
-                    cursor_factory=psycopg2.extras.RealDictCursor
-                ) as cursor:
-                    await cursor.execute(
-                        "SELECT * FROM deployment WHERE id = %(id)s",
-                        {"id": deplyoment_id},
-                    )
-                    return await cursor.fetchone()
+            async with pool.acquire() as conn:
+                return await conn.fetchrow(
+                    "SELECT * FROM deployment WHERE id = $1",
+                    deplyoment_id,
+                )
 
     async def get_input_ports(
         self, step_id: int
     ) -> MutableSequence[MutableMapping[str, Any]]:
         async with self.pool as pool:
-            async with pool.acquire() as db:
-                async with db.cursor(
-                    cursor_factory=psycopg2.extras.RealDictCursor
-                ) as cursor:
-                    await cursor.execute(
-                        "SELECT * FROM dependency WHERE step = %(step)s AND type = %(type)s",
-                        {"step": step_id, "type": DependencyType.INPUT.value},
-                    )
-                    return await cursor.fetchall()
+            async with pool.acquire() as conn:
+                return await conn.fetch(
+                    "SELECT * FROM dependency WHERE step = $1 AND type = $2",
+                    step_id,
+                    DependencyType.INPUT.value,
+                )
 
     async def get_output_ports(
         self, step_id: int
     ) -> MutableSequence[MutableMapping[str, Any]]:
         async with self.pool as pool:
-            async with pool.acquire() as db:
-                async with db.cursor(
-                    cursor_factory=psycopg2.extras.RealDictCursor
-                ) as cursor:
-                    await cursor.execute(
-                        "SELECT * FROM dependency WHERE step = %(step)s AND type = %(type)s",
-                        {"step": step_id, "type": DependencyType.OUTPUT.value},
-                    )
-                    return await cursor.fetchall()
+            async with pool.acquire() as conn:
+                return await conn.fetch(
+                    "SELECT * FROM dependency WHERE step = $1 AND type = $2",
+                    step_id,
+                    DependencyType.OUTPUT.value,
+                )
 
     async def get_port(self, port_id: int) -> MutableMapping[str, Any]:
         async with self.pool as pool:
-            async with pool.acquire() as db:
-                async with db.cursor(
-                    cursor_factory=psycopg2.extras.RealDictCursor
-                ) as cursor:
-                    await cursor.execute(
-                        "SELECT * FROM port WHERE id = %(id)s", {"id": port_id}
-                    )
-                    return await cursor.fetchone()
+            async with pool.acquire() as conn:
+                return await conn.fetchrow("SELECT * FROM port WHERE id = $1", port_id)
 
     async def get_port_tokens(self, port_id: int) -> MutableSequence[int]:
         async with self.pool as pool:
-            async with pool.acquire() as db:
-                async with db.cursor() as cursor:
-                    await cursor.execute(
-                        "SELECT * FROM port WHERE id = %(id)s", {"id": port_id}
-                    )
-                    return [row[0] for row in await cursor.fetchall()]
+            async with pool.acquire() as conn:
+                rows = await conn.fetch("SELECT * FROM port WHERE id = $1", port_id)
+                return [row["id"] for row in rows]
 
     async def get_reports(
         self, workflow: str, last_only: bool = False
     ) -> MutableSequence[MutableSequence[MutableMapping[str, Any]]]:
         async with self.pool as pool:
-            async with pool.acquire() as db:
-                async with db.cursor(
-                    cursor_factory=psycopg2.extras.RealDictCursor
-                ) as cursor:
-                    if last_only:
-                        await cursor.execute(
-                            "SELECT c.id, s.name, c.start_time, c.end_time "
-                            "FROM step AS s, command AS c "
-                            "WHERE s.id = c.step "
-                            "AND s.workflow = (SELECT id FROM workflow WHERE name = %(workflow)s ORDER BY id DESC LIMIT 1)",
-                            {"workflow": workflow},
-                        )
-                        return [[dict(r) for r in await cursor.fetchall()]]
-                    else:
-                        await cursor.execute(
+            async with pool.acquire() as conn:
+                if last_only:
+                    rows = await conn.fetch(
+                        "SELECT c.id, s.name, c.start_time, c.end_time "
+                        "FROM step AS s, command AS c "
+                        "WHERE s.id = c.step "
+                        "AND s.workflow = ("
+                        "SELECT id FROM workflow "
+                        "WHERE name = $1 "
+                        "ORDER BY id DESC LIMIT 1)",
+                        workflow,
+                    )
+                    return [[dict(r) for r in rows]]
+                else:
+                    async with conn.transaction():
+                        cursor = conn.cursor(
                             "SELECT s.workflow, c.id, s.name, c.start_time, c.end_time "
                             "FROM step AS s, command AS c "
                             "WHERE s.id = c.step "
-                            "AND s.workflow IN (SELECT id FROM workflow WHERE name = %(workflow)s) "
+                            "AND s.workflow IN (SELECT id FROM workflow WHERE name = $1) "
                             "ORDER BY s.workflow DESC",
-                            {"workflow": workflow},
+                            workflow,
                         )
                         result = {}
                         async for row in cursor:
@@ -407,134 +366,98 @@ class PostgreSQLDatabase(CachedDatabase):
 
     async def get_step(self, step_id: int) -> MutableMapping[str, Any]:
         async with self.pool as pool:
-            async with pool.acquire() as db:
-                async with db.cursor(
-                    cursor_factory=psycopg2.extras.RealDictCursor
-                ) as cursor:
-                    await cursor.execute(
-                        "SELECT * FROM step WHERE id = %(id)s", {"id": step_id}
-                    )
-                    return await cursor.fetchone()
+            async with pool.acquire() as conn:
+                return await conn.fetchrow("SELECT * FROM step WHERE id = $1", step_id)
 
     async def get_target(self, target_id: int) -> MutableMapping[str, Any]:
         async with self.pool as pool:
-            async with pool.acquire() as db:
-                async with db.cursor(
-                    cursor_factory=psycopg2.extras.RealDictCursor
-                ) as cursor:
-                    await cursor.execute(
-                        "SELECT * FROM target WHERE id = %(id)s", {"id": target_id}
-                    )
-                    return await cursor.fetchone()
+            async with pool.acquire() as conn:
+                return await conn.fetchrow(
+                    "SELECT * FROM target WHERE id = $1", target_id
+                )
 
     async def get_token(self, token_id: int) -> MutableMapping[str, Any]:
         async with self.pool as pool:
-            async with pool.acquire() as db:
-                async with db.cursor(
-                    cursor_factory=psycopg2.extras.RealDictCursor
-                ) as cursor:
-                    await cursor.execute(
-                        "SELECT * FROM token WHERE id = %(id)s", {"id": token_id}
-                    )
-                    return {
-                        k: bytearray(v) if isinstance(v, memoryview) else v
-                        for k, v in (await cursor.fetchone()).items()
-                    }
+            async with pool.acquire() as conn:
+                row = await conn.fetchrow("SELECT * FROM token WHERE id = $1", token_id)
+                return {
+                    k: bytearray(v) if isinstance(v, memoryview) else v
+                    for k, v in row.items()
+                }
 
     async def get_workflow(self, workflow_id: int) -> MutableMapping[str, Any]:
         async with self.pool as pool:
-            async with pool.acquire() as db:
-                async with db.cursor(
-                    cursor_factory=psycopg2.extras.RealDictCursor
-                ) as cursor:
-                    await cursor.execute(
-                        "SELECT * FROM workflow WHERE id = %(id)s", {"id": workflow_id}
-                    )
-                    return await cursor.fetchone()
+            async with pool.acquire() as conn:
+                return await conn.fetchrow(
+                    "SELECT * FROM workflow WHERE id = $1", workflow_id
+                )
 
     async def get_workflow_ports(
         self, workflow_id: int
     ) -> MutableSequence[MutableMapping[str, Any]]:
         async with self.pool as pool:
-            async with pool.acquire() as db:
-                async with db.cursor(
-                    cursor_factory=psycopg2.extras.RealDictCursor
-                ) as cursor:
-                    await cursor.execute(
-                        "SELECT * FROM port WHERE workflow = %(workflow)s",
-                        {"workflow": workflow_id},
-                    )
-                    return await cursor.fetchall()
+            async with pool.acquire() as conn:
+                return await conn.fetch(
+                    "SELECT * FROM port WHERE workflow = $1",
+                    workflow_id,
+                )
 
     async def get_workflow_steps(
         self, workflow_id: int
     ) -> MutableSequence[MutableMapping[str, Any]]:
         async with self.pool as pool:
-            async with pool.acquire() as db:
-                async with db.cursor(
-                    cursor_factory=psycopg2.extras.RealDictCursor
-                ) as cursor:
-                    await cursor.execute(
-                        "SELECT * FROM step WHERE workflow = %(workflow)s",
-                        {"workflow": workflow_id},
-                    )
-                    return await cursor.fetchall()
+            async with pool.acquire() as conn:
+                return await conn.fetch(
+                    "SELECT * FROM step WHERE workflow = $1",
+                    workflow_id,
+                )
 
     async def get_workflows_by_name(
         self, workflow_name: str, last_only: bool = False
     ) -> MutableSequence[MutableMapping[str, Any]]:
         async with self.pool as pool:
-            async with pool.acquire() as db:
-                async with db.cursor(
-                    cursor_factory=psycopg2.extras.RealDictCursor
-                ) as cursor:
-                    await cursor.execute(
-                        "SELECT * FROM workflow WHERE name = %(name)s ORDER BY id desc",
-                        {"name": workflow_name},
-                    )
-                    return (
-                        [await cursor.fetchone()]
-                        if last_only
-                        else await cursor.fetchall()
-                    )
+            async with pool.acquire() as conn:
+                query = "SELECT * FROM workflow WHERE name = $1 ORDER BY id desc"
+                return (
+                    [conn.fetchrow(query, workflow_name)]
+                    if last_only
+                    else conn.fetch(query, workflow_name)
+                )
 
     async def get_workflows_list(
         self, name: str | None
     ) -> MutableSequence[MutableMapping[str, Any]]:
-        async with self.pool as pool:
-            async with pool.acquire() as db:
-                if name is not None:
-                    return [
-                        {
-                            "end_time": get_date_from_ns(row["end_time"]),
-                            "start_time": get_date_from_ns(row["start_time"]),
-                            "status": Status(row["status"]).name,
-                            "type": row["type"],
-                        }
-                        for row in await self.get_workflows_by_name(
-                            name, last_only=False
-                        )
-                    ]
-                else:
-                    async with db.cursor(
-                        cursor_factory=psycopg2.extras.RealDictCursor
-                    ) as cursor:
-                        await cursor.execute(
-                            "SELECT name, type, COUNT(*) AS num FROM workflow GROUP BY name, type ORDER BY name DESC"
-                        )
-                        return await cursor.fetchall()
+        if name is not None:
+            return [
+                {
+                    "end_time": get_date_from_ns(row["end_time"]),
+                    "start_time": get_date_from_ns(row["start_time"]),
+                    "status": Status(row["status"]).name,
+                    "type": row["type"],
+                }
+                for row in await self.get_workflows_by_name(name, last_only=False)
+            ]
+        else:
+            async with self.pool as pool:
+                async with pool.acquire() as conn:
+                    return await conn.fetch(
+                        "SELECT name, type, COUNT(*) AS num "
+                        "FROM workflow GROUP BY name, type "
+                        "ORDER BY name DESC"
+                    )
 
     async def update_command(
         self, command_id: int, updates: MutableMapping[str, Any]
     ) -> int:
         async with self.pool as pool:
-            async with pool.acquire() as db:
-                async with db.cursor() as cursor:
-                    await cursor.execute(
-                        "UPDATE command SET {} WHERE id = %(id)s".format(  # nosec
-                            ", ".join([f"{k} = %({k})s" for k in updates])
+            async with pool.acquire() as conn:
+                async with conn.transaction():
+                    await conn.execute(
+                        "UPDATE command SET {} WHERE id = $1".format(  # nosec
+                            ", ".join([f"{k} = ${i+2}" for i, k in enumerate(updates)])
                         ),
-                        {**updates, **{"id": command_id}},
+                        command_id,
+                        *updates.values(),
                     )
                     self.port_cache.pop(command_id, None)
                     return command_id
@@ -543,39 +466,42 @@ class PostgreSQLDatabase(CachedDatabase):
         self, deployment_id: int, updates: MutableMapping[str, Any]
     ) -> int:
         async with self.pool as pool:
-            async with pool.acquire() as db:
-                async with db.cursor() as cursor:
-                    await cursor.execute(
-                        "UPDATE deployment SET {} WHERE id = %(id)s".format(  # nosec
-                            ", ".join([f"{k} = %({k})s" for k in updates])
+            async with pool.acquire() as conn:
+                async with conn.transaction():
+                    await conn.execute(
+                        "UPDATE deployment SET {} WHERE id = $1".format(  # nosec
+                            ", ".join([f"{k} = ${i+2}" for i, k in enumerate(updates)])
                         ),
-                        {**updates, **{"id": deployment_id}},
+                        deployment_id,
+                        *updates.values(),
                     )
                     self.port_cache.pop(deployment_id, None)
                     return deployment_id
 
     async def update_port(self, port_id: int, updates: MutableMapping[str, Any]) -> int:
         async with self.pool as pool:
-            async with pool.acquire() as db:
-                async with db.cursor() as cursor:
-                    await cursor.execute(
-                        "UPDATE port SET {} WHERE id = %(id)s".format(  # nosec
-                            ", ".join([f"{k} = %({k})s" for k in updates])
+            async with pool.acquire() as conn:
+                async with conn.transaction():
+                    await conn.execute(
+                        "UPDATE port SET {} WHERE id = $1".format(  # nosec
+                            ", ".join([f"{k} = ${i+2}" for i, k in enumerate(updates)])
                         ),
-                        {**updates, **{"id": port_id}},
+                        port_id,
+                        *updates.values(),
                     )
                     self.port_cache.pop(port_id, None)
                     return port_id
 
     async def update_step(self, step_id: int, updates: MutableMapping[str, Any]) -> int:
         async with self.pool as pool:
-            async with pool.acquire() as db:
-                async with db.cursor() as cursor:
-                    await cursor.execute(
-                        "UPDATE step SET {} WHERE id = %(id)s".format(  # nosec
-                            ", ".join([f"{k} = %({k})s" for k in updates])
+            async with pool.acquire() as conn:
+                async with conn.transaction():
+                    await conn.execute(
+                        "UPDATE step SET {} WHERE id = $1".format(  # nosec
+                            ", ".join([f"{k} = ${i+2}" for i, k in enumerate(updates)])
                         ),
-                        {**updates, **{"id": step_id}},
+                        step_id,
+                        *updates.values(),
                     )
                     self.step_cache.pop(step_id, None)
                     return step_id
@@ -584,13 +510,14 @@ class PostgreSQLDatabase(CachedDatabase):
         self, target_id: int, updates: MutableMapping[str, Any]
     ) -> int:
         async with self.pool as pool:
-            async with pool.acquire() as db:
-                async with db.cursor() as cursor:
-                    await cursor.execute(
-                        "UPDATE target SET {} WHERE id = %(id)s".format(  # nosec
-                            ", ".join([f"{k} = %({k})s" for k in updates])
+            async with pool.acquire() as conn:
+                async with conn.transaction():
+                    await conn.execute(
+                        "UPDATE target SET {} WHERE id = $1".format(  # nosec
+                            ", ".join([f"{k} = ${i+2}" for i, k in enumerate(updates)])
                         ),
-                        {**updates, **{"id": target_id}},
+                        target_id,
+                        *updates.values(),
                     )
                     self.target_cache.pop(target_id, None)
                     return target_id
@@ -599,13 +526,14 @@ class PostgreSQLDatabase(CachedDatabase):
         self, workflow_id: int, updates: MutableMapping[str, Any]
     ) -> int:
         async with self.pool as pool:
-            async with pool.acquire() as db:
-                async with db.cursor() as cursor:
-                    await cursor.execute(
-                        "UPDATE workflow SET {} WHERE id = %(id)s".format(  # nosec
-                            ", ".join([f"{k} = %({k})s" for k in updates])
+            async with pool.acquire() as conn:
+                async with conn.transaction():
+                    await conn.execute(
+                        "UPDATE workflow SET {} WHERE id = $1".format(  # nosec
+                            ", ".join([f"{k} = ${i+2}" for i, k in enumerate(updates)])
                         ),
-                        {**updates, **{"id": workflow_id}},
+                        workflow_id,
+                        *updates.values(),
                     )
                     self.workflow_cache.pop(workflow_id, None)
                     return workflow_id
