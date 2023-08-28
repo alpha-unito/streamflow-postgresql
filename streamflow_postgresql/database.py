@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import os
 from typing import Any, MutableMapping, MutableSequence
 
@@ -158,7 +159,7 @@ class PostgreSQLDatabase(CachedDatabase):
                             "name": name,
                             "workflow": workflow_id,
                             "type": utils.get_class_fullname(type),
-                            "params": params,
+                            "params": json.dumps(params),
                         },
                     )
                     return (await cursor.fetchone())[0]
@@ -191,7 +192,7 @@ class PostgreSQLDatabase(CachedDatabase):
                             "workflow": workflow_id,
                             "status": status,
                             "type": utils.get_class_fullname(type),
-                            "params": params,
+                            "params": json.dumps(params),
                         },
                     )
                     return (await cursor.fetchone())[0]
@@ -213,7 +214,7 @@ class PostgreSQLDatabase(CachedDatabase):
                         "VALUES (%(params)s, %(type)s, %(deployment)s, %(locations)s, %(service)s, %(workdir)s) "
                         "RETURNING id",
                         {
-                            "params": params,
+                            "params": json.dumps(params),
                             "type": utils.get_class_fullname(type),
                             "deployment": deployment,
                             "locations": locations,
@@ -252,7 +253,7 @@ class PostgreSQLDatabase(CachedDatabase):
                         "RETURNING id",
                         {
                             "name": name,
-                            "params": params,
+                            "params": json.dumps(params),
                             "status": status,
                             "type": type,
                         },
@@ -451,24 +452,6 @@ class PostgreSQLDatabase(CachedDatabase):
                     )
                     return await cursor.fetchone()
 
-    async def get_workflows_by_name(
-        self, workflow_name: str, last_only: bool = False
-    ) -> MutableSequence[MutableMapping[str, Any]]:
-        async with self.pool as pool:
-            async with pool.acquire() as db:
-                async with db.cursor(
-                    cursor_factory=psycopg2.extras.RealDictCursor
-                ) as cursor:
-                    await cursor.execute(
-                        "SELECT * FROM workflow WHERE name = %(name)s ORDER BY id desc",
-                        {"name": workflow_name},
-                    )
-                    return (
-                        [await cursor.fetchone()]
-                        if last_only
-                        else await cursor.fetchall()
-                    )
-
     async def get_workflow_ports(
         self, workflow_id: int
     ) -> MutableSequence[MutableMapping[str, Any]]:
@@ -497,7 +480,25 @@ class PostgreSQLDatabase(CachedDatabase):
                     )
                     return await cursor.fetchall()
 
-    async def list_workflows(
+    async def get_workflows_by_name(
+        self, workflow_name: str, last_only: bool = False
+    ) -> MutableSequence[MutableMapping[str, Any]]:
+        async with self.pool as pool:
+            async with pool.acquire() as db:
+                async with db.cursor(
+                    cursor_factory=psycopg2.extras.RealDictCursor
+                ) as cursor:
+                    await cursor.execute(
+                        "SELECT * FROM workflow WHERE name = %(name)s ORDER BY id desc",
+                        {"name": workflow_name},
+                    )
+                    return (
+                        [await cursor.fetchone()]
+                        if last_only
+                        else await cursor.fetchall()
+                    )
+
+    async def get_workflows_list(
         self, name: str | None
     ) -> MutableSequence[MutableMapping[str, Any]]:
         async with self.pool as pool:
