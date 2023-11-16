@@ -1,2 +1,2 @@
-asyncpg==0.28.0
+asyncpg==0.29.0
 streamflow==0.2.0.dev10
