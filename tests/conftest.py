@@ -1,8 +1,10 @@
+import asyncio
 import os
 import tempfile
 from asyncio import Lock
 from typing import Collection
 
+import pytest
 import pytest_asyncio
 from streamflow.core.config import Config
 from streamflow.core.context import StreamFlowContext
@@ -12,6 +14,14 @@ from streamflow.core.workflow import Port, Step, Token, Workflow
 from streamflow.ext.utils import load_extensions
 from streamflow.main import build_context
 from streamflow.persistence.loading_context import DefaultDatabaseLoadingContext
+
+
+@pytest.fixture(scope="session")
+def event_loop():
+    policy = asyncio.get_event_loop_policy()
+    loop = policy.new_event_loop()
+    yield loop
+    loop.close()
 
 
 @pytest_asyncio.fixture(scope="session")
