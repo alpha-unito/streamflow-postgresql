@@ -36,7 +36,7 @@ from streamflow.workflow.token import (
 
 
 # Testing Workflow
-@pytest.mark.asyncio(scope="session")
+@pytest.mark.asyncio
 async def test_workflow(context: StreamFlowContext):
     """Test saving and loading Workflow from database"""
     workflow = Workflow(
@@ -46,7 +46,7 @@ async def test_workflow(context: StreamFlowContext):
 
 
 # Testing Port and its extension classes
-@pytest.mark.asyncio(scope="session")
+@pytest.mark.asyncio
 async def test_port(context: StreamFlowContext):
     """Test saving and loading Port from database"""
     workflow = Workflow(
@@ -57,7 +57,7 @@ async def test_port(context: StreamFlowContext):
     await save_load_and_test(port, context)
 
 
-@pytest.mark.asyncio(scope="session")
+@pytest.mark.asyncio
 async def test_job_port(context: StreamFlowContext):
     """Test saving and loading JobPort from database"""
     workflow = Workflow(
@@ -68,7 +68,7 @@ async def test_job_port(context: StreamFlowContext):
     await save_load_and_test(port, context)
 
 
-@pytest.mark.asyncio(scope="session")
+@pytest.mark.asyncio
 async def test_connector_port(context: StreamFlowContext):
     """Test saving and loading ConnectorPort from database"""
     workflow = Workflow(
@@ -80,7 +80,7 @@ async def test_connector_port(context: StreamFlowContext):
 
 
 # Testing Step and its extension classes
-@pytest.mark.asyncio(scope="session")
+@pytest.mark.asyncio
 async def test_combinator_step(context: StreamFlowContext):
     """Test saving and loading CombinatorStep with CartesianProductCombinator from database"""
     workflow = Workflow(
@@ -98,7 +98,7 @@ async def test_combinator_step(context: StreamFlowContext):
     await save_load_and_test(step, context)
 
 
-@pytest.mark.asyncio(scope="session")
+@pytest.mark.asyncio
 async def test_loop_combinator_step(context: StreamFlowContext):
     """Test saving and loading LoopCombinatorStep from database"""
     workflow = Workflow(
@@ -117,7 +117,7 @@ async def test_loop_combinator_step(context: StreamFlowContext):
     await save_load_and_test(step, context)
 
 
-@pytest.mark.asyncio(scope="session")
+@pytest.mark.asyncio
 async def test_deploy_step(context: StreamFlowContext):
     """Test saving and loading DeployStep from database"""
     workflow = Workflow(
@@ -136,7 +136,7 @@ async def test_deploy_step(context: StreamFlowContext):
     await save_load_and_test(step, context)
 
 
-@pytest.mark.asyncio(scope="session")
+@pytest.mark.asyncio
 async def test_schedule_step(context: StreamFlowContext):
     """Test saving and loading ScheduleStep from database"""
     workflow = Workflow(
@@ -159,7 +159,7 @@ async def test_schedule_step(context: StreamFlowContext):
     await save_load_and_test(schedule_step, context)
 
 
-@pytest.mark.asyncio(scope="session")
+@pytest.mark.asyncio
 async def test_execute_step(context: StreamFlowContext):
     """Test saving and loading ExecuteStep from database"""
     workflow = Workflow(
@@ -174,7 +174,7 @@ async def test_execute_step(context: StreamFlowContext):
     await save_load_and_test(step, context)
 
 
-@pytest.mark.asyncio(scope="session")
+@pytest.mark.asyncio
 async def test_gather_step(context: StreamFlowContext):
     """Test saving and loading GatherStep from database"""
     workflow = Workflow(
@@ -188,7 +188,7 @@ async def test_gather_step(context: StreamFlowContext):
     await save_load_and_test(step, context)
 
 
-@pytest.mark.asyncio(scope="session")
+@pytest.mark.asyncio
 async def test_scatter_step(context: StreamFlowContext):
     """Test saving and loading ScatterStep from database"""
     workflow = Workflow(
@@ -201,7 +201,7 @@ async def test_scatter_step(context: StreamFlowContext):
 
 
 # Subtest - Step param combinator
-@pytest.mark.asyncio(scope="session")
+@pytest.mark.asyncio
 async def test_dot_product_combinator(context: StreamFlowContext):
     """Test saving and loading CombinatorStep with DotProductCombinator from database"""
     workflow = Workflow(
@@ -218,7 +218,7 @@ async def test_dot_product_combinator(context: StreamFlowContext):
     await save_load_and_test(step, context)
 
 
-@pytest.mark.asyncio(scope="session")
+@pytest.mark.asyncio
 async def test_loop_combinator(context: StreamFlowContext):
     """Test saving and loading CombinatorStep with LoopCombinator from database"""
     workflow = Workflow(
@@ -235,7 +235,7 @@ async def test_loop_combinator(context: StreamFlowContext):
     await save_load_and_test(step, context)
 
 
-@pytest.mark.asyncio(scope="session")
+@pytest.mark.asyncio
 async def test_loop_termination_combinator(context: StreamFlowContext):
     """Test saving and loading CombinatorStep with LoopTerminationCombinator from database"""
     workflow = Workflow(
@@ -255,7 +255,7 @@ async def test_loop_termination_combinator(context: StreamFlowContext):
 
 
 # Testing the Target and its extension classes
-@pytest.mark.asyncio(scope="session")
+@pytest.mark.asyncio
 async def test_target(context: StreamFlowContext):
     """Test saving and loading Target from database"""
     target = Target(
@@ -266,7 +266,7 @@ async def test_target(context: StreamFlowContext):
     await save_load_and_test(target, context)
 
 
-@pytest.mark.asyncio(scope="session")
+@pytest.mark.asyncio
 async def test_local_target(context: StreamFlowContext):
     """Test saving and loading LocalTarget from database"""
     target = LocalTarget(workdir=utils.random_name())
@@ -274,14 +274,14 @@ async def test_local_target(context: StreamFlowContext):
 
 
 # Testing the Token and its extension classes
-@pytest.mark.asyncio(scope="session")
+@pytest.mark.asyncio
 async def test_token(context: StreamFlowContext):
     """Test saving and loading Token from database"""
     token = Token(value=["test", "token"])
     await save_load_and_test(token, context)
 
 
-@pytest.mark.asyncio(scope="session")
+@pytest.mark.asyncio
 async def test_job_token(context: StreamFlowContext):
     """Test saving and loading JobToken from database"""
     token = JobToken(
@@ -297,28 +297,28 @@ async def test_job_token(context: StreamFlowContext):
     await save_load_and_test(token, context)
 
 
-@pytest.mark.asyncio(scope="session")
+@pytest.mark.asyncio
 async def test_list_token(context: StreamFlowContext):
     """Test saving and loading ListToken from database"""
     token = ListToken(value=[Token("list"), Token("test")])
     await save_load_and_test(token, context)
 
 
-@pytest.mark.asyncio(scope="session")
+@pytest.mark.asyncio
 async def test_object_token(context: StreamFlowContext):
     """Test saving and loading ObjectToken from database"""
     token = ObjectToken(value={"test": Token("object")})
     await save_load_and_test(token, context)
 
 
-@pytest.mark.asyncio(scope="session")
+@pytest.mark.asyncio
 async def test_termination_token(context: StreamFlowContext):
     """Test saving and loading IterationTerminationToken from database"""
     token = TerminationToken()
     await save_load_and_test(token, context)
 
 
-@pytest.mark.asyncio(scope="session")
+@pytest.mark.asyncio
 async def test_iteration_termination_token(context: StreamFlowContext):
     """Test saving and loading IterationTerminationToken from database"""
     token = IterationTerminationToken("1")
@@ -326,7 +326,7 @@ async def test_iteration_termination_token(context: StreamFlowContext):
 
 
 # Deployment test
-@pytest.mark.asyncio(scope="session")
+@pytest.mark.asyncio
 async def test_deployment(context: StreamFlowContext):
     """Test saving and loading deployment configuration from database"""
     config = get_docker_deployment_config()
