@@ -180,10 +180,14 @@ async def test_gather_step(context: StreamFlowContext):
     workflow = Workflow(
         context=context, type="cwl", name=utils.random_name(), config={}
     )
+    size_port = workflow.create_port()
     await workflow.save(context)
 
     step = workflow.create_step(
-        cls=GatherStep, name=utils.random_name() + "-gather", depth=1
+        cls=GatherStep,
+        name=utils.random_name() + "-gather",
+        depth=1,
+        size_port=size_port,
     )
     await save_load_and_test(step, context)
 
