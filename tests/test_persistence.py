@@ -7,7 +7,7 @@ from tests.conftest import get_docker_deployment_config, save_load_and_test
 from streamflow.core import utils
 from streamflow.core.context import StreamFlowContext
 from streamflow.core.config import BindingConfig
-from streamflow.core.deployment import Target, LocalTarget
+from streamflow.core.deployment import Target, LocalTarget, FilterConfig
 from streamflow.core.workflow import Job, Token, Workflow
 
 from streamflow.workflow.port import JobPort, ConnectorPort
@@ -327,6 +327,13 @@ async def test_iteration_termination_token(context: StreamFlowContext):
     """Test saving and loading IterationTerminationToken from database"""
     token = IterationTerminationToken("1")
     await save_load_and_test(token, context)
+
+
+@pytest.mark.asyncio
+async def test_filter_config(context: StreamFlowContext):
+    """Test saving and loading filter configuration from database"""
+    config = FilterConfig(config={}, name=utils.random_name(), type="shuffle")
+    await save_load_and_test(config, context)
 
 
 # Deployment test
