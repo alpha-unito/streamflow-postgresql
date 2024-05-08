@@ -6,11 +6,9 @@ from typing import Collection
 
 import pytest
 import pytest_asyncio
-from streamflow.core.config import Config
 from streamflow.core.context import StreamFlowContext
-from streamflow.core.deployment import DeploymentConfig, LOCAL_LOCATION, Target
+from streamflow.core.deployment import DeploymentConfig, LOCAL_LOCATION
 from streamflow.core.persistence import PersistableEntity
-from streamflow.core.workflow import Port, Step, Token, Workflow
 from streamflow.ext.utils import load_extensions
 from streamflow.main import build_context
 from streamflow.persistence.loading_context import DefaultDatabaseLoadingContext
@@ -37,7 +35,8 @@ async def context() -> StreamFlowContext:
                     "password": os.environ.get("POSTGRES_PASSWORD", "streamflow"),
                     "hostname": os.environ.get("POSTGRES_HOST", "127.0.0.1"),
                 },
-            }
+            },
+            "path": os.getcwd(),
         },
     )
     await _context.deployment_manager.deploy(
@@ -148,17 +147,5 @@ async def save_load_and_test(elem: PersistableEntity, context):
     # created a new DefaultDatabaseLoadingContext to have the objects fetched from the database
     # (and not take their reference saved in the attributes)
     loading_context = DefaultDatabaseLoadingContext()
-    loaded = None
-    if isinstance(elem, Step):
-        loaded = await loading_context.load_step(context, elem.persistent_id)
-    elif isinstance(elem, Port):
-        loaded = await loading_context.load_port(context, elem.persistent_id)
-    elif isinstance(elem, Token):
-        loaded = await loading_context.load_token(context, elem.persistent_id)
-    elif isinstance(elem, Workflow):
-        loaded = await loading_context.load_workflow(context, elem.persistent_id)
-    elif isinstance(elem, Target):
-        loaded = await loading_context.load_target(context, elem.persistent_id)
-    elif isinstance(elem, Config):
-        loaded = await loading_context.load_deployment(context, elem.persistent_id)
+    loaded = await type(elem).load(context, elem.persistent_id, loading_context)
     assert are_equals(elem, loaded)

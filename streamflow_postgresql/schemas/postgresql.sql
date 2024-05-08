@@ -43,7 +43,7 @@ CREATE TABLE IF NOT EXISTS dependency
 );
 
 
-CREATE TABLE IF NOT EXISTS command
+CREATE TABLE IF NOT EXISTS execution
 (
     id         SERIAL PRIMARY KEY,
     step       INTEGER,
@@ -86,7 +86,8 @@ CREATE TABLE IF NOT EXISTS deployment
     config   TEXT,
     external BOOLEAN,
     lazy     BOOLEAN,
-    workdir  TEXT
+    workdir  TEXT,
+    wraps    TEXT
 );
 
 
@@ -100,4 +101,12 @@ CREATE TABLE IF NOT EXISTS target
     workdir    TEXT,
     params     TEXT,
     FOREIGN KEY (deployment) REFERENCES deployment (id)
+);
+
+CREATE TABLE IF NOT EXISTS filter
+(
+    id          SERIAL PRIMARY KEY,
+    name        TEXT,
+    type        TEXT,
+    config      TEXT
 );
