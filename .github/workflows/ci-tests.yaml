@@ -34,7 +34,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: "3.12"
           cache: pip
           cache-dependency-path: |
             requirements.txt
@@ -50,11 +50,11 @@ jobs:
     name: "Unit tests"
     strategy:
       matrix:
-        on: [ "ubuntu-22.04"]
-        python: [ "3.8", "3.9", "3.10", "3.11" ]
+        on: [ "ubuntu-22.04" ]
+        python: [ "3.8", "3.9", "3.10", "3.11", "3.12" ]
         include:
           - on: "macos-13"
-            python: "3.11"
+            python: "3.12"
     runs-on: ${{ matrix.on }}
     env:
       POSTGRES_DB: streamflow
