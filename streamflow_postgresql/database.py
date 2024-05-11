@@ -164,7 +164,11 @@ class PostgreSQLDatabase(CachedDatabase):
                     )
 
     async def add_port(
-        self, name: str, workflow_id: int, type: type[Port], params: str
+        self,
+        name: str,
+        workflow_id: int,
+        type: type[Port],
+        params: MutableMapping[str, Any],
     ) -> int:
         async with self.pool as pool:
             async with pool.acquire() as conn:
@@ -191,7 +195,12 @@ class PostgreSQLDatabase(CachedDatabase):
                     )
 
     async def add_step(
-        self, name: str, workflow_id: int, status: int, type: type[Step], params: str
+        self,
+        name: str,
+        workflow_id: int,
+        status: int,
+        type: type[Step],
+        params: MutableMapping[str, Any],
     ) -> int:
         async with self.pool as pool:
             async with pool.acquire() as conn:
@@ -211,7 +220,7 @@ class PostgreSQLDatabase(CachedDatabase):
         self,
         deployment: int,
         type: type[Target],
-        params: str,
+        params: MutableMapping[str, Any],
         locations: int = 1,
         service: str | None = None,
         workdir: str | None = None,
@@ -247,7 +256,9 @@ class PostgreSQLDatabase(CachedDatabase):
                         bytearray(value, "utf-8"),
                     )
 
-    async def add_workflow(self, name: str, params: str, status: int, type: str) -> int:
+    async def add_workflow(
+        self, name: str, params: MutableMapping[str, Any], status: int, type: str
+    ) -> int:
         async with self.pool as pool:
             async with pool.acquire() as conn:
                 async with conn.transaction():
@@ -282,12 +293,12 @@ class PostgreSQLDatabase(CachedDatabase):
                 )
 
     @cachedmethod(lambda self: self.deployment_cache)
-    async def get_deployment(self, deplyoment_id: int) -> MutableMapping[str, Any]:
+    async def get_deployment(self, deployment_id: int) -> MutableMapping[str, Any]:
         async with self.pool as pool:
             async with pool.acquire() as conn:
                 return await conn.fetchrow(
                     "SELECT * FROM deployment WHERE id = $1",
-                    deplyoment_id,
+                    deployment_id,
                 )
 
     async def get_execution(self, execution_id: int) -> MutableMapping[str, Any]:
