@@ -7,6 +7,7 @@ from typing import Any, MutableMapping, MutableSequence
 import asyncpg
 import pkg_resources
 from streamflow.core import utils
+from streamflow.core.asyncache import cachedmethod
 from streamflow.core.context import StreamFlowContext
 from streamflow.core.deployment import Target
 from streamflow.core.persistence import DependencyType
@@ -277,6 +278,7 @@ class PostgreSQLDatabase(CachedDatabase):
                     token_id,
                 )
 
+    @cachedmethod(lambda self: self.deployment_cache)
     async def get_deployment(self, deplyoment_id: int) -> MutableMapping[str, Any]:
         async with self.pool as pool:
             async with pool.acquire() as conn:
@@ -312,6 +314,7 @@ class PostgreSQLDatabase(CachedDatabase):
                     for row in rows
                 ]
 
+    @cachedmethod(lambda self: self.filter_cache)
     async def get_filter(self, filter_id: int) -> MutableMapping[str, Any]:
         async with self.pool as pool:
             async with pool.acquire() as conn:
@@ -364,6 +367,7 @@ class PostgreSQLDatabase(CachedDatabase):
                     DependencyType.INPUT.value,
                 )
 
+    @cachedmethod(lambda self: self.port_cache)
     async def get_port(self, port_id: int) -> MutableMapping[str, Any]:
         async with self.pool as pool:
             async with pool.acquire() as conn:
@@ -419,11 +423,13 @@ class PostgreSQLDatabase(CachedDatabase):
                             )
                         return list(result.values())
 
+    @cachedmethod(lambda self: self.step_cache)
     async def get_step(self, step_id: int) -> MutableMapping[str, Any]:
         async with self.pool as pool:
             async with pool.acquire() as conn:
                 return await conn.fetchrow("SELECT * FROM step WHERE id = $1", step_id)
 
+    @cachedmethod(lambda self: self.target_cache)
     async def get_target(self, target_id: int) -> MutableMapping[str, Any]:
         async with self.pool as pool:
             async with pool.acquire() as conn:
@@ -431,6 +437,7 @@ class PostgreSQLDatabase(CachedDatabase):
                     "SELECT * FROM target WHERE id = $1", target_id
                 )
 
+    @cachedmethod(lambda self: self.token_cache)
     async def get_token(self, token_id: int) -> MutableMapping[str, Any]:
         async with self.pool as pool:
             async with pool.acquire() as conn:
@@ -514,7 +521,7 @@ class PostgreSQLDatabase(CachedDatabase):
                         deployment_id,
                         *updates.values(),
                     )
-                    self.port_cache.pop(deployment_id, None)
+                    self.deployment_cache.pop(deployment_id, None)
                     return deployment_id
 
     async def update_execution(
@@ -530,7 +537,6 @@ class PostgreSQLDatabase(CachedDatabase):
                         execution_id,
                         *updates.values(),
                     )
-                    self.port_cache.pop(execution_id, None)
                     return execution_id
 
     async def update_filter(
