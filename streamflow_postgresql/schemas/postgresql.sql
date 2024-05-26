@@ -49,7 +49,6 @@ CREATE TABLE IF NOT EXISTS execution
     step       INTEGER,
     tag        TEXT,
     cmd        TEXT,
-    output     BYTEA,
     status     INTEGER,
     start_time BIGINT,
     end_time   BIGINT,
