@@ -1,11 +1,10 @@
 from __future__ import annotations
 
 import json
-import os
 from typing import Any, MutableMapping, MutableSequence
 
 import asyncpg
-import pkg_resources
+from importlib_resources import files
 from streamflow.core import utils
 from streamflow.core.asyncache import cachedmethod
 from streamflow.core.context import StreamFlowContext
@@ -44,13 +43,14 @@ class PostgreSQLConnectionPool:
                 timeout=self.timeout,
                 max_size=self.maxsize,
             )
-            schema_path = pkg_resources.resource_filename(
-                __name__, os.path.join("schemas", "postgresql.sql")
-            )
-            with open(schema_path) as f:
-                async with self._pool.acquire() as conn:
-                    async with conn.transaction():
-                        await conn.execute(f.read())
+            async with self._pool.acquire() as conn:
+                async with conn.transaction():
+                    await conn.execute(
+                        files(__package__)
+                        .joinpath("schemas")
+                        .joinpath("postgresql.sql")
+                        .read_text("utf-8")
+                    )
         return self._pool
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
@@ -87,9 +87,12 @@ class PostgreSQLDatabase(CachedDatabase):
         await self.pool.close()
 
     @classmethod
-    def get_schema(cls) -> str:
-        return pkg_resources.resource_filename(
-            __name__, os.path.join("schemas", "postgresql.json")
+    def get_schema(cls):
+        return (
+            files(__package__)
+            .joinpath("schemas")
+            .joinpath("postgresql.json")
+            .read_text("utf-8")
         )
 
     async def add_dependency(
