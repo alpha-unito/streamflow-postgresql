@@ -2,7 +2,7 @@ import asyncio
 import os
 import tempfile
 from asyncio import Lock
-from typing import Collection
+from collections.abc import Collection
 
 import pytest
 import pytest_asyncio

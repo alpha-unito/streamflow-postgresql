@@ -20,7 +20,7 @@ format-check:
 	black --diff --check streamflow_postgresql tests
 
 pyupgrade:
-	pyupgrade --py3-only --py38-plus $(shell git ls-files | grep .py)
+	pyupgrade --py3-only --py39-plus $(shell git ls-files | grep .py)
 
 test:
 	python -m pytest -rs ${PYTEST_EXTRA}
