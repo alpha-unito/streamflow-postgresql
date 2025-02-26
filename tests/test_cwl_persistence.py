@@ -4,12 +4,12 @@ from typing import Any
 
 import pytest
 from ruamel.yaml.scalarstring import DoubleQuotedScalarString, LiteralScalarString
-
 from streamflow.core import utils
 from streamflow.core.context import StreamFlowContext
 from streamflow.core.workflow import Workflow
 from streamflow.cwl.command import CWLCommand, CWLCommandToken
 from streamflow.workflow.step import ExecuteStep
+
 from tests.conftest import save_load_and_test
 
 

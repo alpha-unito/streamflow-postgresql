@@ -1,5 +1,4 @@
 import pytest
-
 from streamflow.core import utils
 from streamflow.core.context import StreamFlowContext
 from streamflow.core.workflow import Workflow
