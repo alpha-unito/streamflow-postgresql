@@ -14,9 +14,11 @@ flake8:
 	flake8 streamflow_postgresql tests
 
 format:
+	isort streamflow tests
 	black streamflow_postgresql tests
 
 format-check:
+	isort --check-only streamflow tests
 	black --diff --check streamflow_postgresql tests
 
 pyupgrade:

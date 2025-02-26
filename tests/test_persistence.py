@@ -1,13 +1,10 @@
 import posixpath
 
 import pytest
-
-from tests.conftest import get_docker_deployment_config, save_load_and_test
-
 from streamflow.core import utils
 from streamflow.core.config import BindingConfig
 from streamflow.core.context import StreamFlowContext
-from streamflow.core.deployment import LocalTarget, Target, FilterConfig
+from streamflow.core.deployment import FilterConfig, LocalTarget, Target
 from streamflow.core.workflow import Job, Token, Workflow
 from streamflow.workflow.combinator import (
     CartesianProductCombinator,
@@ -32,6 +29,8 @@ from streamflow.workflow.token import (
     ObjectToken,
     TerminationToken,
 )
+
+from tests.conftest import get_docker_deployment_config, save_load_and_test
 
 
 @pytest.mark.asyncio

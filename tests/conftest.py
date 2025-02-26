@@ -7,7 +7,7 @@ from collections.abc import Collection
 import pytest
 import pytest_asyncio
 from streamflow.core.context import StreamFlowContext
-from streamflow.core.deployment import DeploymentConfig, LOCAL_LOCATION
+from streamflow.core.deployment import LOCAL_LOCATION, DeploymentConfig
 from streamflow.core.persistence import PersistableEntity
 from streamflow.ext.utils import load_extensions
 from streamflow.main import build_context
