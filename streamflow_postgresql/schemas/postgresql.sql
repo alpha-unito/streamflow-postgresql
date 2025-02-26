@@ -1,10 +1,10 @@
 CREATE TABLE IF NOT EXISTS workflow
 (
-    id     SERIAL PRIMARY KEY,
-    name   TEXT,
-    params TEXT,
-    status INTEGER,
-    type   TEXT,
+    id         SERIAL PRIMARY KEY,
+    name       TEXT,
+    params     TEXT,
+    status     INTEGER,
+    type       TEXT,
     start_time BIGINT,
     end_time   BIGINT
 );
