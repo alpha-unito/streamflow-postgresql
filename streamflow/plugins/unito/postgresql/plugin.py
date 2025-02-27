@@ -1,6 +1,6 @@
 from streamflow.ext.plugin import StreamFlowPlugin
 
-from streamflow_postgresql.database import PostgreSQLDatabase
+from streamflow.plugins.unito.postgresql.database import PostgreSQLDatabase
 
 
 class PostgreSQLStreamFlowPlugin(StreamFlowPlugin):

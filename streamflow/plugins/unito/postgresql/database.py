@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import json
-from typing import Any
 from collections.abc import MutableMapping, MutableSequence
+from typing import Any
 
 import asyncpg
 from importlib_resources import files
