@@ -12,7 +12,7 @@ concurrency:
 jobs:
   code-ql-check:
     name: "CodeQL check"
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     permissions:
       security-events: write
     steps:
@@ -24,7 +24,7 @@ jobs:
       - uses: github/codeql-action/analyze@v3
   static-checks:
     name: "Static checks"
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     strategy:
       matrix:
         step: [ "bandit", "lint" ]
@@ -50,7 +50,7 @@ jobs:
     name: "Unit tests"
     strategy:
       matrix:
-        on: [ "ubuntu-22.04" ]
+        on: [ "ubuntu-24.04" ]
         python: [ "3.9", "3.10", "3.11", "3.12", "3.13" ]
         include:
           - on: "macos-13"
@@ -73,7 +73,7 @@ jobs:
             tox.ini
       - uses: actions/setup-node@v4
         with:
-          node-version: "15"
+          node-version: "20"
       - name: "Install Docker (MacOs X)"
         uses: douglascamata/setup-docker-macos-action@v1-alpha.16
         if: ${{ startsWith(matrix.on, 'macos-') }}
@@ -89,7 +89,7 @@ jobs:
             --env POSTGRES_PASSWORD=${{ env.POSTGRES_DB }} \
             --env POSTGRES_USER=${{ env.POSTGRES_DB }} \
             --publish 5432:5432 \
-            postgres:15.2-alpine
+            postgres:17.4-alpine
       - name: "Install Postgresql client"
         run: brew install postgresql
         if: ${{ startsWith(matrix.on, 'macos-') }}
@@ -109,7 +109,7 @@ jobs:
   upload-to-codecov:
     name: "Codecov report upload"
     needs: [ "unit-tests" ]
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       - name: "Download artifacts"
