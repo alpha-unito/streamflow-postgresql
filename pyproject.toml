@@ -35,20 +35,20 @@ Package = "https://pypi.org/project/streamflow-postgresql"
 Repository = "https://github.com/alpha-unito/streamflow-postgresql"
 
 [project.entry-points]
-"unito.streamflow.plugin" = {"unito.postgresql" = "streamflow_postgresql.plugin:PostgreSQLStreamFlowPlugin"}
+"unito.streamflow.plugin" = {"unito.postgresql" = "streamflow.plugins.unito.postgresql.plugin:PostgreSQLStreamFlowPlugin"}
 
 [tool.setuptools]
 packages = [
-    "streamflow_postgresql"
+    "streamflow.plugins.unito.postgresql"
 ]
 zip-safe = true
 
 [tool.setuptools.package-data]
-"streamflow_postgresql" = ["schemas/*.json", "schemas/*.sql"]
+"streamflow.plugins.unito.postgresql" = ["schemas/*.json", "schemas/*.sql"]
 
 [tool.setuptools.dynamic]
 dependencies = {file = "requirements.txt"}
-version = {attr = "streamflow_postgresql.version.VERSION"}
+version = {attr = "streamflow.plugins.unito.postgresql.version.VERSION"}
 
 [tool.setuptools.dynamic.optional-dependencies]
 bandit = {file = "bandit-requirements.txt"}

@@ -17,7 +17,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: "Get version"
-        run: echo "PLUGIN_VERSION=$(cat streamflow_postgresql/version.py | grep -oP '(?<=VERSION = \")(.*)(?=\")')" >> $GITHUB_ENV
+        run: echo "PLUGIN_VERSION=$(cat streamflow/plugins/unito/postgresql/version.py | grep -oP '(?<=VERSION = \")(.*)(?=\")')" >> $GITHUB_ENV
       - name: "Check tag existence"
         uses: mukunku/tag-exists-action@v1.6.0
         id: check-tag
@@ -49,7 +49,7 @@ jobs:
         with:
           python-version: "3.13"
       - name: "Get local version"
-        run: echo "PLUGIN_VERSION=$(cat streamflow_postgresql/version.py | grep -oP '(?<=VERSION = \")(.*)(?=\")')" >> $GITHUB_ENV
+        run: echo "PLUGIN_VERSION=$(cat streamflow/plugins/unito/postgresql/version.py | grep -oP '(?<=VERSION = \")(.*)(?=\")')" >> $GITHUB_ENV
       - name: "Get PyPI version"
         run: echo "PYPI_VERSION=$(pip index versions --pre streamflow-postgresql | grep streamflow-postgresql | sed 's/.*(\(.*\))/\1/')" >> $GITHUB_ENV
       - name: "Build Python packages"
