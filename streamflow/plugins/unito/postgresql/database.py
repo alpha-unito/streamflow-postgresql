@@ -2,17 +2,17 @@ from __future__ import annotations
 
 import json
 from collections.abc import MutableMapping, MutableSequence
+from importlib.resources import files
 from typing import Any
 
 import asyncpg
-from importlib_resources import files
 from streamflow.core import utils
 from streamflow.core.asyncache import cachedmethod
 from streamflow.core.context import StreamFlowContext
 from streamflow.core.deployment import Target
 from streamflow.core.persistence import DependencyType
 from streamflow.core.utils import get_date_from_ns
-from streamflow.core.workflow import Port, Status, Step, Token
+from streamflow.core.workflow import Port, Status, Step, Token, Workflow
 from streamflow.persistence.base import CachedDatabase
 
 
@@ -258,7 +258,11 @@ class PostgreSQLDatabase(CachedDatabase):
                     )
 
     async def add_workflow(
-        self, name: str, params: MutableMapping[str, Any], status: int, type: str
+        self,
+        name: str,
+        params: MutableMapping[str, Any],
+        status: int,
+        type: type[Workflow],
     ) -> int:
         async with self.pool as pool:
             async with pool.acquire() as conn:
@@ -270,7 +274,7 @@ class PostgreSQLDatabase(CachedDatabase):
                         name,
                         json.dumps(params),
                         status,
-                        type,
+                        utils.get_class_fullname(type),
                     )
 
     async def get_dependees(

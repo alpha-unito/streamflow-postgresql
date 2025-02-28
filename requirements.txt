@@ -1,2 +1,2 @@
 asyncpg==0.30.0
-streamflow==0.2.0.dev11
+streamflow==0.2.0.dev12
