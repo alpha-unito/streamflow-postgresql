@@ -7,7 +7,7 @@ import pytest
 import pytest_asyncio
 from pytest_asyncio import is_async_test
 from streamflow.core.context import StreamFlowContext
-from streamflow.core.deployment import LOCAL_LOCATION, DeploymentConfig
+from streamflow.core.deployment import DeploymentConfig, LocalTarget
 from streamflow.core.persistence import PersistableEntity
 from streamflow.ext.utils import load_extensions
 from streamflow.main import build_context
@@ -38,7 +38,7 @@ async def context() -> StreamFlowContext:
     )
     await _context.deployment_manager.deploy(
         DeploymentConfig(
-            name=LOCAL_LOCATION,
+            name=LocalTarget.deployment_name,
             type="local",
             config={},
             external=True,
@@ -111,16 +111,6 @@ def are_equals(elem1, elem2, obj_compared=None):
         if not are_equals(value1, value2, obj_compared):
             return False
     return True
-
-
-def get_docker_deployment_config():
-    return DeploymentConfig(
-        name="alpine-docker",
-        type="docker",
-        config={"image": "alpine:3.16.2"},
-        external=False,
-        lazy=False,
-    )
 
 
 def is_primitive_type(elem):
