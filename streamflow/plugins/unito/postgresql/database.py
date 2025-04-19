@@ -242,12 +242,17 @@ class PostgreSQLDatabase(CachedDatabase):
                     )
 
     async def add_token(
-        self, tag: str, type: type[Token], value: Any, port: int | None = None
+        self,
+        tag: str,
+        type: type[Token],
+        value: Any,
+        port: int | None = None,
+        recoverable: bool = False,
     ) -> int:
         async with self.pool as pool:
             async with pool.acquire() as conn:
                 async with conn.transaction():
-                    return await conn.fetchval(
+                    token_id = await conn.fetchval(
                         "INSERT INTO token(port, type, tag, value) "
                         "VALUES($1, $2, $3, $4) "
                         "RETURNING id",
@@ -256,6 +261,11 @@ class PostgreSQLDatabase(CachedDatabase):
                         tag,
                         bytearray(value, "utf-8"),
                     )
+                    if recoverable:
+                        await conn.fetchval(
+                            "INSERT INTO recoverable(id) VALUES($1)", token_id
+                        )
+                    return token_id
 
     async def add_workflow(
         self,
@@ -460,7 +470,13 @@ class PostgreSQLDatabase(CachedDatabase):
     async def get_token(self, token_id: int) -> MutableMapping[str, Any]:
         async with self.pool as pool:
             async with pool.acquire() as conn:
-                row = await conn.fetchrow("SELECT * FROM token WHERE id = $1", token_id)
+                row = await conn.fetchrow(
+                    "SELECT *, "
+                    "EXISTS(SELECT 1 FROM recoverable AS r WHERE r.id =$1) AS recoverable "
+                    "FROM token "
+                    "WHERE id =$1",
+                    token_id,
+                )
                 return {
                     k: bytearray(v) if isinstance(v, memoryview) else v
                     for k, v in row.items()

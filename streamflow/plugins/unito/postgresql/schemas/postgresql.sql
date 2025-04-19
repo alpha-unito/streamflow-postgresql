@@ -67,6 +67,13 @@ CREATE TABLE IF NOT EXISTS token
 );
 
 
+CREATE TABLE IF NOT EXISTS recoverable
+(
+    id    SERIAL PRIMARY KEY,
+    FOREIGN KEY (id) REFERENCES token (id)
+);
+
+
 CREATE TABLE IF NOT EXISTS provenance
 (
     dependee INTEGER,
