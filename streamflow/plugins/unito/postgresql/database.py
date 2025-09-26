@@ -116,9 +116,10 @@ class PostgreSQLDatabase(CachedDatabase):
         self,
         name: str,
         type: str,
-        config: str,
+        config: MutableMapping[str, Any],
         external: bool,
         lazy: bool,
+        scheduling_policy: MutableMapping[str, Any],
         workdir: str | None,
         wraps: MutableMapping[str, Any] | None,
     ) -> int:
@@ -126,16 +127,17 @@ class PostgreSQLDatabase(CachedDatabase):
             async with pool.acquire() as conn:
                 async with conn.transaction():
                     return await conn.fetchval(
-                        "INSERT INTO deployment(name, type, config, external, lazy, workdir, wraps) "
-                        "VALUES ($1, $2, $3, $4, $5, $6, $7) "
+                        "INSERT INTO deployment(name, type, config, external, lazy, scheduling_policy, workdir, wraps) "
+                        "VALUES ($1, $2, $3, $4, $5, $6, $7, $8) "
                         "RETURNING id",
                         name,
                         type,
-                        config,
+                        json.dumps(config),
                         external,
                         lazy,
+                        json.dumps(scheduling_policy),
                         workdir,
-                        json.dumps(wraps),
+                        json.dumps(wraps) if wraps else None,
                     )
 
     async def add_execution(self, step_id: int, tag: str, cmd: str) -> int:
@@ -151,7 +153,9 @@ class PostgreSQLDatabase(CachedDatabase):
                         cmd.encode("utf-8"),
                     )
 
-    async def add_filter(self, name: str, type: str, config: str) -> int:
+    async def add_filter(
+        self, name: str, type: str, config: MutableMapping[str, Any]
+    ) -> int:
         async with self.pool as pool:
             async with pool.acquire() as conn:
                 async with conn.transaction():
@@ -161,7 +165,7 @@ class PostgreSQLDatabase(CachedDatabase):
                         "RETURNING id",
                         name,
                         type,
-                        config,
+                        json.dumps(config),
                     )
 
     async def add_port(
