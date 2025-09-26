@@ -16,6 +16,14 @@ from streamflow.core.workflow import Port, Status, Step, Token, Workflow
 from streamflow.persistence.base import CachedDatabase
 
 
+def _load_keys(
+    row: MutableMapping[str, Any], keys: MutableSequence[str] | None = None
+) -> MutableMapping[str, Any]:
+    for key in keys or ["params"]:
+        row[key] = json.loads(row[key])
+    return row
+
+
 class PostgreSQLConnectionPool:
     def __init__(
         self,
@@ -116,9 +124,10 @@ class PostgreSQLDatabase(CachedDatabase):
         self,
         name: str,
         type: str,
-        config: str,
+        config: MutableMapping[str, Any],
         external: bool,
         lazy: bool,
+        scheduling_policy: MutableMapping[str, Any],
         workdir: str | None,
         wraps: MutableMapping[str, Any] | None,
     ) -> int:
@@ -126,16 +135,17 @@ class PostgreSQLDatabase(CachedDatabase):
             async with pool.acquire() as conn:
                 async with conn.transaction():
                     return await conn.fetchval(
-                        "INSERT INTO deployment(name, type, config, external, lazy, workdir, wraps) "
-                        "VALUES ($1, $2, $3, $4, $5, $6, $7) "
+                        "INSERT INTO deployment(name, type, config, external, lazy, scheduling_policy, workdir, wraps) "
+                        "VALUES ($1, $2, $3, $4, $5, $6, $7, $8) "
                         "RETURNING id",
                         name,
                         type,
-                        config,
+                        json.dumps(config),
                         external,
                         lazy,
+                        json.dumps(scheduling_policy),
                         workdir,
-                        json.dumps(wraps),
+                        json.dumps(wraps) if wraps else None,
                     )
 
     async def add_execution(self, step_id: int, tag: str, cmd: str) -> int:
@@ -151,7 +161,9 @@ class PostgreSQLDatabase(CachedDatabase):
                         cmd.encode("utf-8"),
                     )
 
-    async def add_filter(self, name: str, type: str, config: str) -> int:
+    async def add_filter(
+        self, name: str, type: str, config: MutableMapping[str, Any]
+    ) -> int:
         async with self.pool as pool:
             async with pool.acquire() as conn:
                 async with conn.transaction():
@@ -161,7 +173,7 @@ class PostgreSQLDatabase(CachedDatabase):
                         "RETURNING id",
                         name,
                         type,
-                        config,
+                        json.dumps(config),
                     )
 
     async def add_port(
@@ -242,20 +254,30 @@ class PostgreSQLDatabase(CachedDatabase):
                     )
 
     async def add_token(
-        self, tag: str, type: type[Token], value: Any, port: int | None = None
+        self,
+        tag: str,
+        type: type[Token],
+        value: Any,
+        port: int | None = None,
+        recoverable: bool = False,
     ) -> int:
         async with self.pool as pool:
             async with pool.acquire() as conn:
                 async with conn.transaction():
-                    return await conn.fetchval(
+                    token_id = await conn.fetchval(
                         "INSERT INTO token(port, type, tag, value) "
                         "VALUES($1, $2, $3, $4) "
                         "RETURNING id",
                         port,
                         utils.get_class_fullname(type),
                         tag,
-                        bytearray(value, "utf-8"),
+                        bytearray(json.dumps(value), "utf-8"),
                     )
+                    if recoverable:
+                        await conn.fetchval(
+                            "INSERT INTO recoverable(id) VALUES($1)", token_id
+                        )
+                    return token_id
 
     async def add_workflow(
         self,
@@ -301,10 +323,17 @@ class PostgreSQLDatabase(CachedDatabase):
     async def get_deployment(self, deployment_id: int) -> MutableMapping[str, Any]:
         async with self.pool as pool:
             async with pool.acquire() as conn:
-                return await conn.fetchrow(
-                    "SELECT * FROM deployment WHERE id = $1",
-                    deployment_id,
+                row = _load_keys(
+                    dict(
+                        await conn.fetchrow(
+                            "SELECT * FROM deployment WHERE id = $1",
+                            deployment_id,
+                        )
+                    ),
+                    ["config", "scheduling_policy"],
                 )
+                row["wraps"] = json.loads(row["wraps"]) if row["wraps"] else None
+                return row
 
     async def get_execution(self, execution_id: int) -> MutableMapping[str, Any]:
         async with self.pool as pool:
@@ -337,9 +366,14 @@ class PostgreSQLDatabase(CachedDatabase):
     async def get_filter(self, filter_id: int) -> MutableMapping[str, Any]:
         async with self.pool as pool:
             async with pool.acquire() as conn:
-                return await conn.fetchrow(
-                    "SELECT * FROM filter WHERE id = $1",
-                    filter_id,
+                return _load_keys(
+                    dict(
+                        await conn.fetchrow(
+                            "SELECT * FROM filter WHERE id = $1",
+                            filter_id,
+                        )
+                    ),
+                    ["config"],
                 )
 
     async def get_input_ports(
@@ -390,16 +424,24 @@ class PostgreSQLDatabase(CachedDatabase):
     async def get_port(self, port_id: int) -> MutableMapping[str, Any]:
         async with self.pool as pool:
             async with pool.acquire() as conn:
-                return await conn.fetchrow("SELECT * FROM port WHERE id = $1", port_id)
+                return _load_keys(
+                    dict(
+                        await conn.fetchrow("SELECT * FROM port WHERE id = $1", port_id)
+                    )
+                )
 
     async def get_port_from_token(self, token_id: int) -> MutableMapping[str, Any]:
         async with self.pool as pool:
             async with pool.acquire() as conn:
-                return await conn.fetchrow(
-                    "SELECT port.* "
-                    "FROM token JOIN port ON token.port = port.id"
-                    "WHERE token.id = $1",
-                    token_id,
+                return _load_keys(
+                    dict(
+                        await conn.fetchrow(
+                            "SELECT port.* "
+                            "FROM token JOIN port ON token.port = port.id"
+                            "WHERE token.id = $1",
+                            token_id,
+                        )
+                    )
                 )
 
     async def get_port_tokens(self, port_id: int) -> MutableSequence[int]:
@@ -446,31 +488,50 @@ class PostgreSQLDatabase(CachedDatabase):
     async def get_step(self, step_id: int) -> MutableMapping[str, Any]:
         async with self.pool as pool:
             async with pool.acquire() as conn:
-                return await conn.fetchrow("SELECT * FROM step WHERE id = $1", step_id)
+                return _load_keys(
+                    dict(
+                        await conn.fetchrow("SELECT * FROM step WHERE id = $1", step_id)
+                    )
+                )
 
     @cachedmethod(lambda self: self.target_cache)
     async def get_target(self, target_id: int) -> MutableMapping[str, Any]:
         async with self.pool as pool:
             async with pool.acquire() as conn:
-                return await conn.fetchrow(
-                    "SELECT * FROM target WHERE id = $1", target_id
+                return _load_keys(
+                    dict(
+                        await conn.fetchrow(
+                            "SELECT * FROM target WHERE id = $1", target_id
+                        )
+                    )
                 )
 
     @cachedmethod(lambda self: self.token_cache)
     async def get_token(self, token_id: int) -> MutableMapping[str, Any]:
         async with self.pool as pool:
             async with pool.acquire() as conn:
-                row = await conn.fetchrow("SELECT * FROM token WHERE id = $1", token_id)
-                return {
-                    k: bytearray(v) if isinstance(v, memoryview) else v
-                    for k, v in row.items()
-                }
+                return _load_keys(
+                    dict(
+                        await conn.fetchrow(
+                            "SELECT *, "
+                            "EXISTS(SELECT 1 FROM recoverable AS r WHERE r.id =$1) AS recoverable "
+                            "FROM token "
+                            "WHERE id =$1",
+                            token_id,
+                        )
+                    ),
+                    ["value"],
+                )
 
     async def get_workflow(self, workflow_id: int) -> MutableMapping[str, Any]:
         async with self.pool as pool:
             async with pool.acquire() as conn:
-                return await conn.fetchrow(
-                    "SELECT * FROM workflow WHERE id = $1", workflow_id
+                return _load_keys(
+                    dict(
+                        await conn.fetchrow(
+                            "SELECT * FROM workflow WHERE id = $1", workflow_id
+                        )
+                    )
                 )
 
     async def get_workflow_ports(
@@ -478,20 +539,26 @@ class PostgreSQLDatabase(CachedDatabase):
     ) -> MutableSequence[MutableMapping[str, Any]]:
         async with self.pool as pool:
             async with pool.acquire() as conn:
-                return await conn.fetch(
-                    "SELECT * FROM port WHERE workflow = $1",
-                    workflow_id,
-                )
+                return [
+                    _load_keys(dict(r))
+                    for r in await conn.fetch(
+                        "SELECT * FROM port WHERE workflow = $1",
+                        workflow_id,
+                    )
+                ]
 
     async def get_workflow_steps(
         self, workflow_id: int
     ) -> MutableSequence[MutableMapping[str, Any]]:
         async with self.pool as pool:
             async with pool.acquire() as conn:
-                return await conn.fetch(
-                    "SELECT * FROM step WHERE workflow = $1",
-                    workflow_id,
-                )
+                return [
+                    _load_keys(dict(r))
+                    for r in await conn.fetch(
+                        "SELECT * FROM step WHERE workflow = $1",
+                        workflow_id,
+                    )
+                ]
 
     async def get_workflows_by_name(
         self, workflow_name: str, last_only: bool = False
@@ -500,9 +567,12 @@ class PostgreSQLDatabase(CachedDatabase):
             async with pool.acquire() as conn:
                 query = "SELECT * FROM workflow WHERE name = $1 ORDER BY id desc"
                 return (
-                    [conn.fetchrow(query, workflow_name)]
+                    [_load_keys(dict(await conn.fetchrow(query, workflow_name)))]
                     if last_only
-                    else conn.fetch(query, workflow_name)
+                    else [
+                        _load_keys(dict(r))
+                        for r in await conn.fetch(query, workflow_name)
+                    ]
                 )
 
     async def get_workflows_list(

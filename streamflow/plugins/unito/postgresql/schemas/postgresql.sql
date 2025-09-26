@@ -9,6 +9,7 @@ CREATE TABLE IF NOT EXISTS workflow
     end_time   BIGINT
 );
 
+
 CREATE TABLE IF NOT EXISTS step
 (
     id       SERIAL PRIMARY KEY,
@@ -19,6 +20,7 @@ CREATE TABLE IF NOT EXISTS step
     params   TEXT,
     FOREIGN KEY (workflow) REFERENCES workflow (id)
 );
+
 
 CREATE TABLE IF NOT EXISTS port
 (
@@ -47,7 +49,7 @@ CREATE TABLE IF NOT EXISTS execution
 (
     id         SERIAL PRIMARY KEY,
     step       INTEGER,
-    tag        TEXT,
+    job_token  INTEGER,
     cmd        TEXT,
     status     INTEGER,
     start_time BIGINT,
@@ -79,14 +81,15 @@ CREATE TABLE IF NOT EXISTS provenance
 
 CREATE TABLE IF NOT EXISTS deployment
 (
-    id       SERIAL PRIMARY KEY,
-    name     TEXT,
-    type     TEXT,
-    config   TEXT,
-    external BOOLEAN,
-    lazy     BOOLEAN,
-    workdir  TEXT,
-    wraps    TEXT
+    id                  SERIAL PRIMARY KEY,
+    name                TEXT,
+    type                TEXT,
+    config              TEXT,
+    external            BOOLEAN,
+    lazy                BOOLEAN,
+    scheduling_policy   TEXT,
+    workdir             TEXT,
+    wraps               TEXT
 );
 
 
@@ -101,6 +104,14 @@ CREATE TABLE IF NOT EXISTS target
     params     TEXT,
     FOREIGN KEY (deployment) REFERENCES deployment (id)
 );
+
+
+CREATE TABLE IF NOT EXISTS recoverable
+(
+    id    SERIAL PRIMARY KEY,
+    FOREIGN KEY (id) REFERENCES token (id)
+);
+
 
 CREATE TABLE IF NOT EXISTS filter
 (
