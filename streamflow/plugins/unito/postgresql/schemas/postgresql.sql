@@ -106,6 +106,13 @@ CREATE TABLE IF NOT EXISTS target
 );
 
 
+CREATE TABLE IF NOT EXISTS recoverable
+(
+    id    SERIAL PRIMARY KEY,
+    FOREIGN KEY (id) REFERENCES token (id)
+);
+
+
 CREATE TABLE IF NOT EXISTS filter
 (
     id          SERIAL PRIMARY KEY,
