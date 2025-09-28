@@ -3,9 +3,7 @@ import tempfile
 from asyncio import Lock
 from collections.abc import Collection
 
-import pytest
 import pytest_asyncio
-from pytest_asyncio import is_async_test
 from streamflow.core.context import StreamFlowContext
 from streamflow.core.deployment import DeploymentConfig, LocalTarget
 from streamflow.core.persistence import PersistableEntity
@@ -14,12 +12,7 @@ from streamflow.main import build_context
 from streamflow.persistence.loading_context import DefaultDatabaseLoadingContext
 
 
-def pytest_collection_modifyitems(items):
-    for async_test in (item for item in items if is_async_test(item)):
-        async_test.add_marker(pytest.mark.asyncio(loop_scope="module"), append=False)
-
-
-@pytest_asyncio.fixture(scope="module")
+@pytest_asyncio.fixture(scope="session")
 async def context() -> StreamFlowContext:
     load_extensions()
     _context = build_context(
