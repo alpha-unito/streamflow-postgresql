@@ -2142,6 +2142,7 @@ wheels = [
 
 [[package]]
 name = "streamflow-postgresql"
+version = "0.0.9"
 source = { editable = "." }
 dependencies = [
     { name = "asyncpg" },

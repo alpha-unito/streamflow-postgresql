@@ -16,8 +16,18 @@ jobs:
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
     steps:
       - uses: actions/checkout@v6
+      - uses: astral-sh/setup-uv@v7
+        with:
+          version: "0.9.16"
+      - uses: actions/setup-python@v6
+        with:
+          python-version: 3.13
+      - name: "Install plugin"
+        run: uv sync --locked --no-dev
       - name: "Get version"
-        run: echo "PLUGIN_VERSION=$(cat streamflow/plugins/unito/postgresql/version.py | grep -oP '(?<=VERSION = \")(.*)(?=\")')" >> $GITHUB_ENV
+        run: |
+          source .venv/bin/activate
+          echo "STREAMFLOW_VERSION=$(python -c "from streamflow.plugins.unito.postgresql.version import VERSION; print(VERSION)")" >> $GITHUB_ENV
       - name: "Check tag existence"
         uses: mukunku/tag-exists-action@v1.7.0
         id: check-tag
@@ -45,11 +55,18 @@ jobs:
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
     steps:
       - uses: actions/checkout@v6
+      - uses: astral-sh/setup-uv@v7
+        with:
+          version: "0.9.16"
       - uses: actions/setup-python@v6
         with:
-          python-version: "3.13"
+          python-version: 3.13
+      - name: "Install plugin"
+        run: uv sync --locked --no-dev
       - name: "Get local version"
-        run: echo "PLUGIN_VERSION=$(cat streamflow/plugins/unito/postgresql/version.py | grep -oP '(?<=VERSION = \")(.*)(?=\")')" >> $GITHUB_ENV
+        run: |
+          source .venv/bin/activate
+          echo "STREAMFLOW_VERSION=$(python -c "from streamflow.plugins.unito.postgresql.version import VERSION; print(VERSION)")" >> $GITHUB_ENV
       - name: "Get PyPI version"
         run: echo "PYPI_VERSION=$(pip index versions --pre streamflow-postgresql | grep streamflow-postgresql | sed 's/.*(\(.*\))/\1/')" >> $GITHUB_ENV
       - name: "Build Python packages"
