@@ -32,18 +32,14 @@ jobs:
       TOXENV: ${{ matrix.step }}
     steps:
       - uses: actions/checkout@v6
+      - uses: astral-sh/setup-uv@v7
+        with:
+          version: "0.9.16"
       - uses: actions/setup-python@v6
         with:
           python-version: "3.13"
-          cache: pip
-          cache-dependency-path: |
-            requirements.txt
-            test-requirements.txt
-            tox.ini
-      - name: "Install Python Dependencies and plugin"
-        run: |
-          python -m pip install tox --user
-          python -m pip install . --user
+      - name: "Install Tox"
+        run: uv tool install tox --with tox-uv
       - name: "Run static analysis via Tox"
         run: tox
   unit-tests:
@@ -64,13 +60,12 @@ jobs:
       TOXENV: ${{ format('py{0}-unit', matrix.python) }}
     steps:
       - uses: actions/checkout@v6
+      - uses: astral-sh/setup-uv@v7
+        with:
+          version: "0.9.16"
       - uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python }}
-          cache: pip
-          cache-dependency-path: |
-            requirements.txt
-            tox.ini
       - uses: actions/setup-node@v6
         with:
           node-version: "20"
@@ -93,12 +88,10 @@ jobs:
       - name: "Install Postgresql client"
         run: brew install libpq@17
         if: ${{ startsWith(matrix.on, 'macos-') }}
-      - name: "Install Python Dependencies and plugin"
-        run: |
-          python -m pip install tox --user
-          python -m pip install . --user
+      - name: "Install Tox"
+        run: uv tool install tox --with tox-uv
       - name: "Run tests via Tox"
-        run: python -m tox
+        run: tox
       - name: "Upload coverage report for unit tests"
         uses: actions/upload-artifact@v6
         with:

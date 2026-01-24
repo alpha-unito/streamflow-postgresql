@@ -27,7 +27,12 @@ classifiers = [
     "Topic :: Scientific/Engineering",
     "Topic :: System :: Distributed Computing",
 ]
-dynamic = ["dependencies", "optional-dependencies", "version"]
+dependencies = [
+    "asyncpg==0.31.0",
+    "streamflow==0.2.0.dev13"
+]
+dynamic = ["version"]
+
 
 [project.urls]
 Package = "https://pypi.org/project/streamflow-postgresql"
@@ -35,6 +40,29 @@ Repository = "https://github.com/alpha-unito/streamflow-postgresql"
 
 [project.entry-points]
 "unito.streamflow.plugin" = {"unito.postgresql" = "streamflow.plugins.unito.postgresql.plugin:PostgreSQLStreamFlowPlugin"}
+
+[dependency-groups]
+dev = [
+    {include-group = "bandit"},
+    {include-group = "lint"},
+    {include-group = "test"}
+]
+bandit = [
+    "bandit==1.9.2"
+]
+lint = [
+    "black==25.11.0",
+    "codespell==2.4.1",
+    "flake8-bugbear==25.11.29",
+    "isort==6.1.0",
+    "pyupgrade==3.21.0"
+]
+test = [
+    "pytest==9.0.2",
+    "pytest-asyncio==1.3.0",
+    "pytest-cov==7.0.0",
+    "pytest-xdist==3.8.0"
+]
 
 [tool.setuptools]
 packages = [
@@ -46,13 +74,7 @@ zip-safe = true
 "streamflow.plugins.unito.postgresql" = ["schemas/*.json", "schemas/*.sql"]
 
 [tool.setuptools.dynamic]
-dependencies = {file = "requirements.txt"}
 version = {attr = "streamflow.plugins.unito.postgresql.version.VERSION"}
-
-[tool.setuptools.dynamic.optional-dependencies]
-bandit = {file = "bandit-requirements.txt"}
-lint = {file = "lint-requirements.txt"}
-test = {file = "test-requirements.txt"}
 
 [tool.isort]
 profile = "black"
