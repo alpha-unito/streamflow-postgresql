@@ -31,7 +31,7 @@ dependencies = [
     "asyncpg==0.31.0",
     "streamflow==0.2.0.dev13"
 ]
-dynamic = ["version"]
+version = "0.0.9"
 
 
 [project.urls]
@@ -72,9 +72,6 @@ zip-safe = true
 
 [tool.setuptools.package-data]
 "streamflow.plugins.unito.postgresql" = ["schemas/*.json", "schemas/*.sql"]
-
-[tool.setuptools.dynamic]
-version = {attr = "streamflow.plugins.unito.postgresql.version.VERSION"}
 
 [tool.isort]
 profile = "black"
