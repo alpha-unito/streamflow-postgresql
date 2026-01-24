@@ -55,7 +55,7 @@ lint = [
     "codespell==2.4.1",
     "flake8-bugbear==25.11.29",
     "isort==7.0.0",
-    "pyupgrade==3.21.0"
+    "pyupgrade==3.21.2"
 ]
 test = [
     "pytest==9.0.2",
