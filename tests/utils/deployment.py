@@ -1,7 +1,7 @@
 from streamflow.core.deployment import DeploymentConfig
 
 
-def get_docker_deployment_config():
+def get_docker_deployment_config() -> DeploymentConfig:
     return DeploymentConfig(
         name="alpine-docker",
         type="docker",
