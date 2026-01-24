@@ -48,7 +48,7 @@ dev = [
     {include-group = "test"}
 ]
 bandit = [
-    "bandit==1.9.2"
+    "bandit==1.9.3"
 ]
 lint = [
     "black==25.11.0",
