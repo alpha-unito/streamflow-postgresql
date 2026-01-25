@@ -11,7 +11,7 @@ from streamflow.workflow.combinator import (
     LoopCombinator,
     LoopTerminationCombinator,
 )
-from streamflow.workflow.step import CombinatorStep, LoopCombinatorStep
+from streamflow.workflow.step import CombinatorStep
 
 from tests.utils.utils import get_full_instantiation
 
@@ -60,21 +60,21 @@ def get_combinator_step(
 ) -> CombinatorStep:
     combinator_step_cls = CombinatorStep
     name = utils.random_name()
-    if combinator_type == "cartesian_product_combinator":
-        combinator = get_cartesian_product_combinator(workflow, name)
-    elif combinator_type == "dot_combinator":
-        combinator = get_dot_combinator(workflow, name)
-    elif combinator_type == "loop_combinator":
-        combinator_step_cls = LoopCombinatorStep
-        combinator = get_loop_combinator(workflow, name)
-    elif combinator_type == "loop_termination_combinator":
-        combinator = get_loop_terminator_combinator(workflow, name)
-    elif combinator_type == "nested_crossproduct":
-        combinator = get_nested_crossproduct(workflow, name)
-    else:
-        raise ValueError(
-            f"Invalid input combinator type: {combinator_type} is not supported"
-        )
+    match combinator_type:
+        case "cartesian_product_combinator":
+            combinator = get_cartesian_product_combinator(workflow, name)
+        case "dot_combinator":
+            combinator = get_dot_combinator(workflow, name)
+        case "loop_combinator":
+            combinator = get_loop_combinator(workflow, name)
+        case "loop_termination_combinator":
+            combinator = get_loop_terminator_combinator(workflow, name)
+        case "nested_crossproduct":
+            combinator = get_nested_crossproduct(workflow, name)
+        case _:
+            raise ValueError(
+                f"Invalid input combinator type: {combinator_type} is not supported"
+            )
     if inner_combinator:
         if combinator_type == "nested_crossproduct":
             raise ValueError("Nested crossproduct already has inner combinators")

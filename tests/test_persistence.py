@@ -188,7 +188,7 @@ async def test_gather_step(context: StreamFlowContext):
 
     step = get_full_instantiation(
         cls_=GatherStep,
-        name=utils.random_name() + "-gather",
+        name=f"{utils.random_name()}-gather",
         depth=2,
         size_port=port,
         workflow=workflow,
@@ -205,7 +205,7 @@ async def test_scatter_step(context: StreamFlowContext):
 
     step = get_full_instantiation(
         cls_=ScatterStep,
-        name=utils.random_name() + "-scatter",
+        name=f"{utils.random_name()}-scatter",
         size_port=port,
         workflow=workflow,
     )
@@ -285,11 +285,14 @@ async def test_job_token(context: StreamFlowContext):
 @pytest.mark.asyncio
 async def test_list_token(context: StreamFlowContext):
     """Test saving and loading ListToken from database"""
+    # The `ListToken` does not accept `recoverable=True` and set its internal attribute to `False`.
+    # However, when using `get_full_instantiation`, passing the `recoverable` value is mandatory.
+    # To handle this, `None` is passed, allowing the `get_full_instantiation` function to control the value.
     token = get_full_instantiation(
         cls_=ListToken,
-        value=[Token("list"), Token("test")],
+        value=[Token("list", recoverable=True), Token("test", recoverable=True)],
         tag="0.0",
-        recoverable=True,
+        recoverable=None,
     )
     await save_load_and_test(token, context)
 
@@ -297,8 +300,14 @@ async def test_list_token(context: StreamFlowContext):
 @pytest.mark.asyncio
 async def test_object_token(context: StreamFlowContext):
     """Test saving and loading ObjectToken from database"""
+    # The `ObjectToken` does not accept `recoverable=True` and set its internal attribute to `False`.
+    # However, when using `get_full_instantiation`, passing the `recoverable` value is mandatory.
+    # To handle this, `None` is passed, allowing the `get_full_instantiation` function to control the value.
     token = get_full_instantiation(
-        cls_=ObjectToken, value={"test": Token("object")}, tag="0.0", recoverable=True
+        cls_=ObjectToken,
+        value={"test": Token("object", recoverable=True)},
+        tag="0.0",
+        recoverable=None,
     )
     await save_load_and_test(token, context)
 

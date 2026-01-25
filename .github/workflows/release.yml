@@ -23,7 +23,7 @@ jobs:
         with:
           python-version: 3.13
       - name: "Install plugin"
-        run: uv sync --locked --no-dev
+        run: uv pip install .
       - name: "Get version"
         run: |
           source .venv/bin/activate
@@ -62,7 +62,7 @@ jobs:
         with:
           python-version: 3.13
       - name: "Install plugin"
-        run: uv sync --locked --no-dev
+        run: uv pip install .
       - name: "Get local version"
         run: |
           source .venv/bin/activate
