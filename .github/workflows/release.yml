@@ -23,7 +23,9 @@ jobs:
         with:
           python-version: 3.13
       - name: "Install plugin"
-        run: uv pip install .
+        run: |
+          uv venv
+          uv pip install .
       - name: "Get version"
         run: |
           source .venv/bin/activate
@@ -60,9 +62,11 @@ jobs:
           version: "0.9.16"
       - uses: actions/setup-python@v6
         with:
-          python-version: 3.13
+          python-version: 3.14
       - name: "Install plugin"
-        run: uv pip install .
+        run: |
+          uv venv
+          uv pip install .
       - name: "Get local version"
         run: |
           source .venv/bin/activate
