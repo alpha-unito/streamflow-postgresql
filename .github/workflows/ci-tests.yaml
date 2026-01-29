@@ -22,6 +22,74 @@ jobs:
           config-file: .github/codeql/config.yml
           languages: python
       - uses: github/codeql-action/analyze@v4
+  cwl-conformance:
+    name: "CWL conformance tests"
+    strategy:
+      matrix:
+        on: [ "ubuntu-24.04", "macos-15-intel" ]
+    runs-on: ${{ matrix.on }}
+    env:
+      POSTGRES_DB: streamflow
+      POSTGRES_PASSWORD: streamflow
+      POSTGRES_USER: streamflow
+      POSTGRES_HOST: 127.0.0.1
+    steps:
+      - uses: actions/checkout@v6
+      - uses: astral-sh/setup-uv@v7
+        with:
+          version: "0.9.16"
+      - uses: actions/setup-python@v6
+        with:
+          python-version: 3.14
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+      - name: "Install Docker (MacOS X)"
+        uses: douglascamata/setup-docker-macos-action@v1
+        with:
+          colima-additional-options: '--mount /private/var/folders:w'
+        if: ${{ startsWith(matrix.on, 'macos-') }}
+      - uses: docker/setup-qemu-action@v3
+        if: ${{ startsWith(matrix.on, 'ubuntu-') }}
+      - name: "Start PostgreSQL Docker container"
+        run: |
+          docker run \
+            --rm \
+            --detach \
+            --env POSTGRES_DB=${{ env.POSTGRES_DB }} \
+            --env POSTGRES_PASSWORD=${{ env.POSTGRES_DB }} \
+            --env POSTGRES_USER=${{ env.POSTGRES_DB }} \
+            --publish 5432:5432 \
+            postgres:18.1-alpine
+      - name: "Install Postgresql client"
+        run: brew install libpq@17
+        if: ${{ startsWith(matrix.on, 'macos-') }}
+      - name: "Download CWL conformance test script from StreamFlow"
+        run: |
+          curl -fsSL https://raw.githubusercontent.com/alpha-unito/streamflow/refs/tags/0.2.0.dev14/cwl-conformance-test.sh -o cwl-conformance-test.sh
+          chmod 755 cwl-conformance-test.sh
+      - name: "Test CWL v1.3 conformance"
+        env:
+          VERSION: "v1.3"
+          COMMIT: "2063e9095f421f2a2ce12abaf196b2ba06ca5aae"
+          EXCLUDE: "docker_entrypoint,modify_file_content,iwd-container-entryname1"
+          DOCKER: "docker"
+        run: ./cwl-conformance-test.sh
+      - name: "Upload test results"
+        if: ${{ !cancelled() }}
+        uses: codecov/codecov-action@v5
+        with:
+          flags: ${{ startsWith(matrix.on, 'macos-') && 'macos' || 'ubuntu' }}
+          report_type: test_results
+          token: ${{ secrets.CODECOV_TOKEN }}
+      - name: "Upload coverage report for conformance tests"
+        uses: actions/upload-artifact@v6
+        with:
+          name: ${{ format('{0}-py3.14-cwlv1.3-docker-conformance-tests', matrix.on) }}
+          path: |
+            ./coverage.xml
+          retention-days: 1
+          if-no-files-found: error
   static-checks:
     name: "Static checks"
     runs-on: ubuntu-24.04

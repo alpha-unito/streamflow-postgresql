@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 from collections.abc import MutableMapping, MutableSequence
 from importlib.resources import files
@@ -54,12 +55,17 @@ class PostgreSQLConnectionPool:
             )
             async with self._pool.acquire() as conn:
                 async with conn.transaction():
-                    await conn.execute(
+                    schema = (
                         files(__package__)
                         .joinpath("schemas")
                         .joinpath("postgresql.sql")
                         .read_text("utf-8")
                     )
+                    schema_checksum = hashlib.new("sha1", usedforsecurity=False)
+                    schema_checksum.update(schema.encode("utf-8"))
+                    lock_key = int(schema_checksum.hexdigest(), 16) % (2**63 - 1)
+                    await conn.execute(f"SELECT pg_advisory_xact_lock({lock_key})")
+                    await conn.execute(schema)
         return self._pool
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
@@ -148,17 +154,17 @@ class PostgreSQLDatabase(CachedDatabase):
                         json.dumps(wraps) if wraps else None,
                     )
 
-    async def add_execution(self, step_id: int, tag: str, cmd: str) -> int:
+    async def add_execution(self, step_id: int, job_token_id: int, cmd: str) -> int:
         async with self.pool as pool:
             async with pool.acquire() as conn:
                 async with conn.transaction():
                     return await conn.fetchval(
-                        "INSERT INTO execution(step, tag, cmd) "
+                        "INSERT INTO execution(step, job_token, cmd) "
                         "VALUES($1, $2, $3) "
                         "RETURNING id",
                         step_id,
-                        tag,
-                        cmd.encode("utf-8"),
+                        job_token_id,
+                        cmd,
                     )
 
     async def add_filter(

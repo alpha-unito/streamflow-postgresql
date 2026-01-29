@@ -1,0 +1,8 @@
+version: v1.0
+database:
+  type: unito.postgresql
+  config:
+    dbname: streamflow
+    username: streamflow
+    password: streamflow
+    hostname: 127.0.0.1
