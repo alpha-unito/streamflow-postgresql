@@ -59,6 +59,7 @@ lint = [
     "pyupgrade==3.21.2"
 ]
 test = [
+    "cwltest==2.6.20251216093331",
     "pytest==9.0.2",
     "pytest-asyncio==1.3.0",
     "pytest-cov==7.0.0",

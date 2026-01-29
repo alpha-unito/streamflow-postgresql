@@ -21,7 +21,7 @@ jobs:
           version: "0.9.16"
       - uses: actions/setup-python@v6
         with:
-          python-version: 3.13
+          python-version: 3.14
       - name: "Install plugin"
         run: |
           uv venv
@@ -29,7 +29,7 @@ jobs:
       - name: "Get version"
         run: |
           source .venv/bin/activate
-          echo "STREAMFLOW_VERSION=$(python -c "from streamflow.plugins.unito.postgresql.version import VERSION; print(VERSION)")" >> $GITHUB_ENV
+          echo "PLUGIN_VERSION=$(python -c "from streamflow.plugins.unito.postgresql.version import VERSION; print(VERSION)")" >> $GITHUB_ENV
       - name: "Check tag existence"
         uses: mukunku/tag-exists-action@v1.7.0
         id: check-tag
@@ -70,7 +70,7 @@ jobs:
       - name: "Get local version"
         run: |
           source .venv/bin/activate
-          echo "STREAMFLOW_VERSION=$(python -c "from streamflow.plugins.unito.postgresql.version import VERSION; print(VERSION)")" >> $GITHUB_ENV
+          echo "PLUGIN_VERSION=$(python -c "from streamflow.plugins.unito.postgresql.version import VERSION; print(VERSION)")" >> $GITHUB_ENV
       - name: "Get PyPI version"
         run: echo "PYPI_VERSION=$(pip index versions --pre streamflow-postgresql | grep streamflow-postgresql | sed 's/.*(\(.*\))/\1/')" >> $GITHUB_ENV
       - name: "Build Python packages"
