@@ -77,7 +77,7 @@ jobs:
         run: ./cwl-conformance-test.sh
       - name: "Upload test results"
         if: ${{ !cancelled() }}
-        uses: codecov/codecov-action@v5
+        uses: codecov/codecov-action@v6
         with:
           flags: ${{ startsWith(matrix.on, 'macos-') && 'macos' || 'ubuntu' }}
           report_type: test_results
@@ -176,7 +176,7 @@ jobs:
       - name: "Download artifacts"
         uses: actions/download-artifact@v8
       - name: "Upload coverage to Codecov"
-        uses: codecov/codecov-action@v5
+        uses: codecov/codecov-action@v6
         with:
           fail_ci_if_error: true
         env:
