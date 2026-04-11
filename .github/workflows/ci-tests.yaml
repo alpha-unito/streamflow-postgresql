@@ -49,7 +49,7 @@ jobs:
         env:
           LIMA_START_ARGS: '--vm-type=vz --mount-type=virtiofs --mount /private/var/folders:w'
         if: ${{ startsWith(matrix.on, 'macos-') }}
-      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-qemu-action@v4
         if: ${{ startsWith(matrix.on, 'ubuntu-') }}
       - name: "Start PostgreSQL Docker container"
         run: |
@@ -142,7 +142,7 @@ jobs:
         env:
           LIMA_START_ARGS: '--vm-type=vz --mount-type=virtiofs --mount /private/var/folders:w'
         if: ${{ startsWith(matrix.on, 'macos-') }}
-      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-qemu-action@v4
       - name: "Start PostgreSQL Docker container"
         run: |
           docker run \
