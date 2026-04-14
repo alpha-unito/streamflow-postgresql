@@ -30,7 +30,7 @@ classifiers = [
 ]
 dependencies = [
     "asyncpg==0.31.0",
-    "streamflow==0.2.0.dev14"
+    "streamflow==0.2.0rc1"
 ]
 version = "0.0.10"
 

@@ -66,13 +66,13 @@ jobs:
         if: ${{ startsWith(matrix.on, 'macos-') }}
       - name: "Download CWL conformance test script from StreamFlow"
         run: |
-          curl -fsSL https://raw.githubusercontent.com/alpha-unito/streamflow/refs/tags/0.2.0.dev14/cwl-conformance-test.sh -o cwl-conformance-test.sh
+          curl -fsSL https://raw.githubusercontent.com/alpha-unito/streamflow/refs/tags/0.2.0rc1/cwl-conformance-test.sh -o cwl-conformance-test.sh
           chmod 755 cwl-conformance-test.sh
       - name: "Test CWL v1.3 conformance"
         env:
           VERSION: "v1.3"
           COMMIT: "2063e9095f421f2a2ce12abaf196b2ba06ca5aae"
-          EXCLUDE: "docker_entrypoint,modify_file_content,iwd-container-entryname1"
+          EXCLUDE: "docker_entrypoint,modify_file_content"
           DOCKER: "docker"
         run: ./cwl-conformance-test.sh
       - name: "Upload test results"
