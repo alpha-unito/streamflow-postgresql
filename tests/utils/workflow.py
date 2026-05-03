@@ -41,7 +41,7 @@ async def create_workflow(
     for _ in range(num_port):
         ports.append(workflow.create_port())
     if save:
-        await workflow.save(context)
+        await workflow.save(context.database)
     return workflow, tuple(ports)
 
 
