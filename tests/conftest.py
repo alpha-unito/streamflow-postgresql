@@ -5,7 +5,7 @@ from collections.abc import Collection
 
 import pytest_asyncio
 from streamflow.core.context import StreamFlowContext
-from streamflow.core.deployment import DeploymentConfig, LocalTarget
+from streamflow.core.deployment import DeploymentConfig
 from streamflow.core.persistence import PersistableEntity
 from streamflow.ext.utils import load_extensions
 from streamflow.main import build_context
@@ -31,7 +31,7 @@ async def context() -> StreamFlowContext:
     )
     await _context.deployment_manager.deploy(
         DeploymentConfig(
-            name=LocalTarget.deployment_name,
+            name="__LOCAL__",
             type="local",
             config={},
             external=True,
@@ -115,17 +115,19 @@ def object_to_dict(obj):
     return {
         attr: getattr(obj, attr)
         for attr in dir(obj)
-        if not attr.startswith("__") and not callable(getattr(obj, attr))
+        if not attr.startswith("__")
+        and attr != "_saving"
+        and callable(getattr(obj, attr))
     }
 
 
 async def save_load_and_test(elem: PersistableEntity, context):
     assert elem.persistent_id is None
-    await elem.save(context)
+    await elem.save(context.database)
     assert elem.persistent_id is not None
 
     # created a new DefaultDatabaseLoadingContext to have the objects fetched from the database
     # (and not take their reference saved in the attributes)
-    loading_context = DefaultDatabaseLoadingContext()
-    loaded = await type(elem).load(context, elem.persistent_id, loading_context)
+    loading_context = DefaultDatabaseLoadingContext(database=context.database)
+    loaded = await type(elem).load(elem.persistent_id, loading_context)
     assert are_equals(elem, loaded)
