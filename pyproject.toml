@@ -57,7 +57,7 @@ lint = [
     "ruff==0.16.1"
 ]
 test = [
-    "cwltest==2.6.20251216093331",
+    "cwltest==2.7.20260814074913",
     "pytest==9.1.1",
     "pytest-asyncio==1.4.0",
     "pytest-cov==7.1.0",
