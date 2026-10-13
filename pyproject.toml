@@ -29,7 +29,7 @@ classifiers = [
     "Topic :: System :: Distributed Computing",
 ]
 dependencies = [
-    "asyncpg==0.31.0",
+    "asyncpg==0.32.0",
     "streamflow==0.2.0rc2"
 ]
 version = "0.0.12"
