@@ -1,6 +1,6 @@
 import posixpath
 from collections.abc import MutableMapping
-from typing import Any
+from typing import Any, Self
 
 import pytest
 from streamflow.core import utils
@@ -31,7 +31,6 @@ from streamflow.workflow.token import (
     ObjectToken,
     TerminationToken,
 )
-from typing_extensions import Self
 
 from tests.conftest import save_load_and_test
 from tests.utils.deployment import get_docker_deployment_config
